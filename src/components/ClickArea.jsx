@@ -1,18 +1,42 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { formatMoney, formatCPS } from '../utils/calculations';
+
+const HOLD_CLICKS_PER_SECOND = 2;
+const HOLD_INTERVAL_MS = 1000 / HOLD_CLICKS_PER_SECOND;
 
 export function ClickArea({ onClickFunds, currentCPS, activityFeed }) {
   const [feedbacks, setFeedbacks] = useState([]);
+  const [holding, setHolding] = useState(false);
+  const intervalRef = useRef(null);
 
-  const handleClick = () => {
-    const gained = onClickFunds();
-
+  const spawnFeedback = useCallback((gained) => {
     const id = Math.random();
     const x = (Math.random() - 0.5) * 80;
     const y = (Math.random() - 0.5) * 40;
     setFeedbacks(prev => [...prev, { id, x, y, amount: gained }]);
     setTimeout(() => setFeedbacks(prev => prev.filter(f => f.id !== id)), 700);
-  };
+  }, []);
+
+  const handleClick = useCallback(() => {
+    const gained = onClickFunds();
+    spawnFeedback(gained);
+  }, [onClickFunds, spawnFeedback]);
+
+  const startHold = useCallback(() => {
+    if (intervalRef.current) return;
+    setHolding(true);
+    intervalRef.current = setInterval(() => {
+      const gained = onClickFunds();
+      spawnFeedback(gained);
+    }, HOLD_INTERVAL_MS);
+  }, [onClickFunds, spawnFeedback]);
+
+  const stopHold = useCallback(() => {
+    if (!intervalRef.current) return;
+    clearInterval(intervalRef.current);
+    intervalRef.current = null;
+    setHolding(false);
+  }, []);
 
   return (
     <div className="flex flex-col h-full bg-slate-800/50">
@@ -34,10 +58,20 @@ export function ClickArea({ onClickFunds, currentCPS, activityFeed }) {
 
         <button
           onClick={handleClick}
-          className="w-44 h-44 rounded-full bg-slate-700 hover:bg-slate-600 active:scale-95 border-2 border-slate-600 hover:border-slate-500 font-semibold text-white transition-all text-sm tracking-wide shadow-lg flex flex-col items-center justify-center gap-1"
+          onMouseDown={startHold}
+          onMouseUp={stopHold}
+          onMouseLeave={stopHold}
+          onTouchStart={startHold}
+          onTouchEnd={stopHold}
+          className={`w-44 h-44 rounded-full border-2 font-semibold text-white text-sm tracking-wide shadow-lg flex flex-col items-center justify-center gap-1 transition-all ${
+            holding
+              ? 'bg-slate-600 border-slate-500 scale-95'
+              : 'bg-slate-700 hover:bg-slate-600 active:scale-95 border-slate-600 hover:border-slate-500'
+          }`}
         >
           <span className="text-lg">₱</span>
           <span>Allocate Funds</span>
+          {holding && <span className="text-xs text-slate-400 mt-0.5">holding...</span>}
         </button>
 
         <p className="text-slate-500 text-xs mt-4">{formatCPS(currentCPS)}</p>
