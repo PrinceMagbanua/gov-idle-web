@@ -118,7 +118,7 @@ export function ClickArea({ onClickFunds, addBonusMoney, currentCPS, activityFee
         {/* Payout preview — only while holding */}
         {showHoldUI && (
           <div
-            className="absolute text-center pointer-events-none"
+            className="absolute text-center pointer-events-none z-10"
             style={{ top: 'calc(50% - 118px)' }}
           >
             <div className="bg-slate-900/90 border border-slate-700 rounded px-3 py-1.5">
