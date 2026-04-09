@@ -1,56 +1,59 @@
 import { useState } from 'react';
+import { formatMoney, formatCPS } from '../utils/calculations';
 
-export function ClickArea({ onClickFunds, activityFeed }) {
+export function ClickArea({ onClickFunds, currentCPS, activityFeed }) {
   const [feedbacks, setFeedbacks] = useState([]);
 
   const handleClick = () => {
-    onClickFunds();
+    const gained = onClickFunds();
 
     const id = Math.random();
-    const feedback = { id, x: Math.random() * 100 - 50 };
-    setFeedbacks(prev => [...prev, feedback]);
-
-    setTimeout(() => {
-      setFeedbacks(prev => prev.filter(f => f.id !== id));
-    }, 500);
+    const x = Math.random() * 80 - 40;
+    setFeedbacks(prev => [...prev, { id, x, amount: gained }]);
+    setTimeout(() => setFeedbacks(prev => prev.filter(f => f.id !== id)), 600);
   };
 
   return (
-    <div className="flex-1 flex h-full flex-col items-center justify-center bg-gradient-to-b from-slate-800 to-slate-900 relative overflow-hidden">
-      <div className="relative flex flex-col items-center justify-center">
+    <div className="flex flex-col h-full bg-slate-800/50">
+      {/* Click zone */}
+      <div className="flex-1 flex flex-col items-center justify-center relative overflow-hidden">
+        {/* Placeholder frame for future pixel art */}
+        <div className="w-56 h-56 border border-slate-700 rounded-lg bg-slate-900/60 flex items-center justify-center mb-6 relative">
+          <div className="text-slate-700 text-xs text-center px-4 select-none">
+            [ pixel art goes here ]
+          </div>
+
+          {feedbacks.map(f => (
+            <div
+              key={f.id}
+              className="feedback-pop text-sm font-bold text-green-400 pointer-events-none"
+              style={{ left: `calc(50% + ${f.x}px)`, top: '40%' }}
+            >
+              +{formatMoney(f.amount)}
+            </div>
+          ))}
+        </div>
+
         <button
           onClick={handleClick}
-          className="relative w-32 h-32 bg-gradient-to-b from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 rounded-full shadow-lg font-bold text-lg text-white transition-transform hover:scale-110 active:scale-95 flex items-center justify-center text-center leading-tight"
+          className="w-40 py-3 bg-slate-700 hover:bg-slate-600 active:scale-95 border border-slate-600 hover:border-slate-500 rounded font-semibold text-white transition-all text-sm tracking-wide"
         >
-          Allocate
-          <br />
-          Funds
+          Allocate Funds
         </button>
 
-        {feedbacks.map(feedback => (
-          <div
-            key={feedback.id}
-            className="feedback-pop text-lg font-bold"
-            style={{
-              left: `calc(50% + ${feedback.x}px)`,
-              top: '50%',
-              transform: 'translateX(-50%)',
-            }}
-          >
-            +1
-          </div>
-        ))}
+        <p className="text-slate-600 text-xs mt-3">{formatCPS(currentCPS)}</p>
       </div>
 
-      <p className="text-slate-400 mt-12 text-center text-sm px-4">Click to allocate government funds</p>
-
+      {/* Activity feed */}
       {activityFeed && activityFeed.length > 0 && (
-        <div className="absolute bottom-0 left-0 right-0 px-4 pb-4 space-y-1">
-          <div className="text-xs text-slate-500 uppercase tracking-wider mb-2">Recent Activity</div>
+        <div className="border-t border-slate-700 px-3 py-3 space-y-1.5">
+          <div className="text-xs text-slate-600 uppercase tracking-wider">Recent</div>
           {activityFeed.map(entry => (
-            <div key={entry.id} className="text-xs text-slate-400 leading-tight">
-              <span className="text-slate-500">{entry.projectName}:</span>{' '}
-              <span className="text-slate-300 italic">"{entry.funnyName}"</span>
+            <div key={entry.id} className="text-xs text-slate-500 leading-tight">
+              <span className="text-slate-400">{entry.name}</span>
+              {entry.funnyName && (
+                <span className="text-slate-600 italic"> &ldquo;{entry.funnyName}&rdquo;</span>
+              )}
             </div>
           ))}
         </div>

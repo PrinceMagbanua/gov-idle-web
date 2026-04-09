@@ -1,104 +1,144 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Toaster } from 'sonner';
 import { useGameState } from './hooks/useGameState';
 import { useAchievementNotifications } from './hooks/useAchievementNotifications';
 import { TopBar } from './components/TopBar';
 import { ClickArea } from './components/ClickArea';
-import { ProjectList } from './components/ProjectList';
-import { UpgradeList } from './components/UpgradeList';
-import { ClickUpgradeList } from './components/ClickUpgradeList';
+import { GeneratorList } from './components/GeneratorList';
+import { GlobalUpgradeList } from './components/GlobalUpgradeList';
+import { PrestigeBar } from './components/PrestigeBar';
+import { PrestigeModal } from './components/PrestigeModal';
+import { OfflineEarningsModal } from './components/OfflineEarningsModal';
 import { AchievementsModal } from './components/AchievementsModal';
-import { getFlavorName } from './data/projectFlavorNames';
 
 function App() {
-  const gameState = useGameState();
-  const [ips, setIps] = useState(0);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
-  const [activityFeed, setActivityFeed] = useState([]);
+  const game = useGameState();
+
+  const [tab, setTab] = useState('generators');
   const [showAchievements, setShowAchievements] = useState(false);
+  const [showPrestigeModal, setShowPrestigeModal] = useState(false);
+  const [activityFeed, setActivityFeed] = useState([]);
 
-  useAchievementNotifications(gameState.achievements);
+  useAchievementNotifications(game.achievements);
 
-  const handleBuyProject = (projectId) => {
-    const success = gameState.buyProject(projectId);
+  const handleBuyGenerator = (generatorId) => {
+    const success = game.buyGenerator(generatorId);
     if (success) {
-      const project = gameState.projects.find(p => p.id === projectId);
-      const funnyName = getFlavorName(projectId);
-      if (funnyName) {
+      const def = game.GENERATORS.find(g => g.id === generatorId);
+      if (def) {
         setActivityFeed(prev => [
-          { id: Date.now(), projectName: project.name, funnyName },
+          { id: Date.now(), name: def.name },
           ...prev,
         ].slice(0, 5));
       }
     }
   };
 
-  useEffect(() => {
-    setIps(gameState.getTotalIPS());
-  }, [gameState.getTotalIPS, gameState.projects, gameState.globalMultiplier]);
-
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 1024);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  const handleAcceptImpeachment = () => {
+    game.acceptImpeachment();
+    setShowPrestigeModal(false);
+  };
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-slate-900">
+    <div className="h-screen w-screen flex flex-col bg-slate-900 overflow-hidden">
       <Toaster position="top-right" theme="dark" />
-      <TopBar
-        money={gameState.money}
-        ips={ips}
-        totalEarned={gameState.totalEarned}
-        onOpenAchievements={() => setShowAchievements(true)}
-      />
 
+      {/* Modals */}
+      {game.pendingOfflineEarnings != null && (
+        <OfflineEarningsModal
+          amount={game.pendingOfflineEarnings}
+          onDismiss={game.dismissOfflineEarnings}
+        />
+      )}
+      {showPrestigeModal && (
+        <PrestigeModal
+          lifetimeEarned={game.lifetimeEarned}
+          nextLagayBonus={game.nextLagayBonus}
+          lagayMultiplier={game.lagayMultiplier}
+          prestigeCount={game.prestigeCount}
+          onConfirm={handleAcceptImpeachment}
+          onCancel={() => setShowPrestigeModal(false)}
+        />
+      )}
       {showAchievements && (
         <AchievementsModal
-          achievements={gameState.achievements}
+          achievements={game.achievements}
           onClose={() => setShowAchievements(false)}
         />
       )}
 
-      <div className="flex flex-1 overflow-hidden gap-0">
-        {/* Left side - Click Area */}
-        <div className="flex-1 min-w-0 md:min-w-96">
+      {/* Top bar */}
+      <TopBar
+        money={game.money}
+        currentCPS={game.currentCPS}
+        lifetimeEarned={game.lifetimeEarned}
+        lagayMultiplier={game.lagayMultiplier}
+        prestigeCount={game.prestigeCount}
+        achievements={game.achievements}
+        onOpenAchievements={() => setShowAchievements(true)}
+      />
+
+      {/* Main layout */}
+      <div className="flex flex-1 overflow-hidden">
+
+        {/* Left panel — click area (fixed width) */}
+        <div className="w-72 flex-shrink-0 border-r border-slate-700">
           <ClickArea
-            onClickFunds={gameState.handleClick}
+            onClickFunds={game.handleClick}
+            currentCPS={game.currentCPS}
             activityFeed={activityFeed}
           />
         </div>
 
-        {/* Right side - Shop Panels */}
-        <div className={`flex ${isMobile ? 'flex-col' : 'flex-row'} border-l border-slate-700 overflow-hidden`}>
-          {/* Projects */}
-          <div className={`${isMobile ? 'w-full' : 'w-80'} border-b md:border-b-0 md:border-r border-slate-700 min-w-0`}>
-            <ProjectList
-              projects={gameState.projects}
-              money={gameState.money}
-              costScaleMultiplier={gameState.costScaleMultiplier}
-              globalMultiplier={gameState.globalMultiplier}
-              onBuyProject={handleBuyProject}
-            />
+        {/* Right panel — game content */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+
+          {/* Tab bar */}
+          <div className="flex border-b border-slate-700 flex-shrink-0">
+            {['generators', 'upgrades'].map(t => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`px-5 py-2.5 text-sm font-medium capitalize transition-colors border-b-2 -mb-px ${
+                  tab === t
+                    ? 'border-slate-400 text-white'
+                    : 'border-transparent text-slate-500 hover:text-slate-300'
+                }`}
+              >
+                {t === 'generators' ? 'Generators' : 'Upgrades'}
+              </button>
+            ))}
           </div>
 
-          {/* Upgrades */}
-          <div className={`${isMobile ? 'w-full' : 'w-80'} border-b md:border-b-0 md:border-r border-slate-700 min-w-0`}>
-            <UpgradeList
-              upgrades={gameState.upgrades}
-              money={gameState.money}
-              onBuyUpgrade={gameState.buyUpgrade}
-            />
+          {/* Scrollable content */}
+          <div className="flex-1 overflow-y-auto">
+            {tab === 'generators' && (
+              <GeneratorList
+                generators={game.generators}
+                generatorUpgrades={game.generatorUpgrades}
+                money={game.money}
+                onBuyGenerator={handleBuyGenerator}
+                onBuyGeneratorUpgrade={game.buyGeneratorUpgrade}
+                GENERATORS={game.GENERATORS}
+              />
+            )}
+            {tab === 'upgrades' && (
+              <GlobalUpgradeList
+                globalUpgrades={game.globalUpgrades}
+                money={game.money}
+                onBuyGlobalUpgrade={game.buyGlobalUpgrade}
+              />
+            )}
           </div>
 
-          {/* Click Upgrades */}
-          <div className={`${isMobile ? 'w-full' : 'w-80'} min-w-0`}>
-            <ClickUpgradeList
-              clickUpgrades={gameState.clickUpgrades}
-              money={gameState.money}
-              onBuyClickUpgrade={gameState.buyClickUpgrade}
-            />
-          </div>
+          {/* Prestige bar — fixed at bottom of right panel */}
+          <PrestigeBar
+            lifetimeEarned={game.lifetimeEarned}
+            prestigeReady={game.prestigeReady}
+            nextLagayBonus={game.nextLagayBonus}
+            lagayMultiplier={game.lagayMultiplier}
+            onOpenPrestige={() => setShowPrestigeModal(true)}
+          />
         </div>
       </div>
     </div>

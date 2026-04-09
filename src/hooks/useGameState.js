@@ -1,228 +1,384 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { calculateTotalIPS, calculateProjectCost } from '../utils/calculations';
+import { GENERATORS } from '../data/generators';
+import { GENERATOR_UPGRADES, GLOBAL_UPGRADES } from '../data/upgrades';
+import { ACHIEVEMENTS } from '../data/achievements';
+import {
+  calculateGeneratorCost,
+  calculateUpgradeCost,
+  calculateTotalCPS,
+  calculateLagayBonus,
+  canPrestige,
+  calculateOfflineEarnings,
+} from '../utils/calculations';
 
-const INITIAL_PROJECTS = [
-  { id: 'public', name: 'Small Claims Bureau', baseCost: 15, incomePerSecond: 0.1, owned: 0, description: 'Where legal disputes go to die slowly' },
-  { id: 'infrastructure', name: 'Reconstruct the Highway', baseCost: 100, incomePerSecond: 1, owned: 0, description: 'The same road, broken and rebuilt infinitely' },
-  { id: 'ghost', name: 'Ghost Project', baseCost: 1200, incomePerSecond: 15, owned: 0, description: 'Exists only in spreadsheets and offshore accounts' },
-  { id: 'ghostemployee', name: 'Ghost Employee', baseCost: 800, incomePerSecond: 8, owned: 0, description: 'Phantom assistant with excellent productivity' },
-  { id: 'luxury', name: 'Luxury Office Complex', baseCost: 3000, incomePerSecond: 5, owned: 0, description: 'Gold toilets aren\'t cheap, but they impress no one' },
-  { id: 'committee', name: 'Committee Study Initiative', baseCost: 150, incomePerSecond: 0.2, owned: 0, description: 'Pay experts to debate if anything should happen' },
-  { id: 'auditdelay', name: 'Equipment Audit Delay', baseCost: 4500, incomePerSecond: 2, owned: 0, description: 'Paperwork so thick, nobody finds the money trail' },
-  { id: 'bidding', name: 'Contractor Bidding Loop', baseCost: 7000, incomePerSecond: 4.2, owned: 0, description: 'Release tenders, extend deadlines, repeat forever' },
-  { id: 'feasibility', name: 'Feasibility Report Farm', baseCost: 600, incomePerSecond: 1.2, owned: 0, description: 'Hire consultants to study whether studying is feasible' },
-  { id: 'compliance', name: 'Compliance Task Force', baseCost: 1800, incomePerSecond: 2.8, owned: 0, description: 'An agency that audits other agencies auditing agencies' },
-  { id: 'road', name: 'Build a New Road', baseCost: 5000, incomePerSecond: 1.8, owned: 0, description: 'Build a road that conveniently passes through your subdivision', prerequisite: 'subdivisions' },
-];
+const SAVE_VERSION = 2;
+const TICK_MS = 100;
 
-const INITIAL_CLICK_UPGRADES = [
-  { id: 'aggressive', name: 'Aggressive Negotiation', cost: 200, type: 'click', effect: 1.3, purchased: false, description: 'Shout louder and faster at keyboards' },
-  { id: 'speedprocessing', name: 'Speed Processing', cost: 150, type: 'click', effect: 1.2, purchased: false, description: 'Skip reading emails, just approve everything' },
-  { id: 'rubstamp', name: 'Rubber Stamp Authority', cost: 450, type: 'click', effect: 2, purchased: false, description: 'Your signature means nothing, but it works' },
-  { id: 'panic', name: 'Panic Decision Making', cost: 800, type: 'click', effect: 2.5, purchased: false, description: 'Hasty decisions get things done... somewhere' },
-];
+// ─── Initial State ────────────────────────────────────────────────────────────
 
-const INITIAL_UPGRADES = [
-  { id: 'consultancy', name: 'Endless Study', cost: 100, type: 'multiplier', effect: 1.5, purchased: false, description: 'Hire consultants to investigate for the next 5 years' },
-  { id: 'nepotism', name: 'Appoint a Relative', cost: 350, type: 'multiplier', effect: 1.4, purchased: false, description: 'Give a cushy position to your family' },
-  { id: 'overpriced', name: 'Contractor Markup Scheme', cost: 500, type: 'multiplier', effect: 2, purchased: false, description: 'Inflate costs when nobody\'s looking' },
-  { id: 'fastapproval', name: 'Jump the Queue', cost: 250, type: 'scale', effect: 1.1, purchased: false, description: 'Pay someone to skip the bureaucratic line' },
-  { id: 'subdivisions', name: 'Create a Subdivision', cost: 8000, type: 'multiplier', effect: 2.5, purchased: false, description: 'Carve out new territory to exploit' },
-  { id: 'audit', name: 'Bribe the Bureau', cost: 1500, type: 'multiplier', effect: 3, purchased: false, description: 'Auditors somehow forget to check your paperwork' },
-  { id: 'optimize', name: 'Process Optimization Board', cost: 50000, type: 'scale', effect: 1.12, purchased: false, description: 'Streamline chaos into slightly less chaotic chaos' },
-];
+function buildInitialGenerators() {
+  return GENERATORS.map(g => ({ id: g.id, owned: 0, modifierLevel: 0 }));
+}
 
-const INITIAL_ACHIEVEMENTS = [
-  { id: 'first_thousand', name: '💰 First Grand', description: 'Earned your first $1,000', moneyThreshold: 1000, unlocked: false },
-  { id: 'first_tenmk', name: '💵 Big Spender', description: 'Earned $10,000', moneyThreshold: 10000, unlocked: false },
-  { id: 'first_million', name: '💎 Millionaire', description: 'Reached $1,000,000', moneyThreshold: 1000000, unlocked: false },
-  { id: 'first_billion', name: '🤑 Billionaire', description: 'Reached $1,000,000,000', moneyThreshold: 1000000000, unlocked: false },
-  { id: 'first_project', name: '🏗️ Project Starter', description: 'Bought your first project', type: 'first_project', unlocked: false },
-  { id: 'ten_projects', name: '🏢 Builder', description: 'Bought 10 projects total', type: 'projects_total', threshold: 10, unlocked: false },
-  { id: 'first_upgrade', name: '⚡ Enhanced', description: 'Bought your first multiplier upgrade', type: 'first_upgrade', unlocked: false },
-  { id: 'first_click', name: '🖱️ Power User', description: 'Bought your first click upgrade', type: 'first_click', unlocked: false },
-];
+function buildInitialGeneratorUpgrades() {
+  return Object.fromEntries(GENERATORS.map(g => [g.id, []])); // [] = list of purchased upgrade indices
+}
+
+function buildInitialGlobalUpgrades() {
+  return Object.fromEntries(GLOBAL_UPGRADES.map(u => [u.id, false]));
+}
+
+function buildInitialAchievements() {
+  return Object.fromEntries(ACHIEVEMENTS.map(a => [a.id, false]));
+}
+
+const INITIAL_STATE = {
+  money: 0,
+  generators: buildInitialGenerators(),
+  generatorUpgrades: buildInitialGeneratorUpgrades(),
+  globalUpgrades: buildInitialGlobalUpgrades(),
+  achievements: buildInitialAchievements(),
+  // Prestige
+  prestigeCount: 0,
+  lagayMultiplier: 1,
+  lifetimeEarned: 0,
+  // Click
+  clickMultiplier: 1,
+  // Tracking (for achievements)
+  totalClicks: 0,
+  totalUpgradesPurchased: 0,
+  totalUpgradesSpent: 0,
+  maxSingleClick: 0,
+  offlineCollectionCount: 0,
+  totalPlaytimeMs: 0,
+  lastSavedTimestamp: Date.now(),
+};
+
+// ─── Save / Load ──────────────────────────────────────────────────────────────
+
+const SAVE_KEY = 'govIdleGameState';
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return null;
+    const saved = JSON.parse(raw);
+    if (saved.saveVersion !== SAVE_VERSION) return null; // wipe old saves
+    return saved;
+  } catch {
+    return null;
+  }
+}
+
+function saveState(state) {
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ ...state, saveVersion: SAVE_VERSION }));
+  } catch {
+    // Storage full or private mode — fail silently
+  }
+}
+
+// ─── Achievement Checking ─────────────────────────────────────────────────────
+
+function checkAchievements(state, currentAchievements) {
+  let changed = false;
+  const updated = { ...currentAchievements };
+
+  for (const def of ACHIEVEMENTS) {
+    if (updated[def.id] || !def.condition) continue;
+    if (def.condition(state)) {
+      updated[def.id] = true;
+      changed = true;
+    }
+  }
+
+  return changed ? updated : currentAchievements;
+}
+
+// ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useGameState() {
-  const [money, setMoney] = useState(0);
-  const [projects, setProjects] = useState(INITIAL_PROJECTS);
-  const [upgrades, setUpgrades] = useState(INITIAL_UPGRADES);
-  const [clickUpgrades, setClickUpgrades] = useState(INITIAL_CLICK_UPGRADES);
-  const [achievements, setAchievements] = useState(INITIAL_ACHIEVEMENTS);
-  const [globalMultiplier, setGlobalMultiplier] = useState(1);
-  const [costScaleMultiplier, setCostScaleMultiplier] = useState(1.15);
-  const [clickMultiplier, setClickMultiplier] = useState(1);
-  const [totalEarned, setTotalEarned] = useState(0);
+  const loaded = loadState();
 
-  // Refs to maintain current values for the interval
+  const [money, setMoney] = useState(loaded?.money ?? INITIAL_STATE.money);
+  const [generators, setGenerators] = useState(loaded?.generators ?? INITIAL_STATE.generators);
+  const [generatorUpgrades, setGeneratorUpgrades] = useState(loaded?.generatorUpgrades ?? INITIAL_STATE.generatorUpgrades);
+  const [globalUpgrades, setGlobalUpgrades] = useState(loaded?.globalUpgrades ?? INITIAL_STATE.globalUpgrades);
+  const [achievements, setAchievements] = useState(loaded?.achievements ?? INITIAL_STATE.achievements);
+  const [prestigeCount, setPrestigeCount] = useState(loaded?.prestigeCount ?? 0);
+  const [lagayMultiplier, setLagayMultiplier] = useState(loaded?.lagayMultiplier ?? 1);
+  const [lifetimeEarned, setLifetimeEarned] = useState(loaded?.lifetimeEarned ?? 0);
+  const [clickMultiplier] = useState(loaded?.clickMultiplier ?? 1);
+  const [totalClicks, setTotalClicks] = useState(loaded?.totalClicks ?? 0);
+  const [totalUpgradesPurchased, setTotalUpgradesPurchased] = useState(loaded?.totalUpgradesPurchased ?? 0);
+  const [totalUpgradesSpent, setTotalUpgradesSpent] = useState(loaded?.totalUpgradesSpent ?? 0);
+  const [maxSingleClick, setMaxSingleClick] = useState(loaded?.maxSingleClick ?? 0);
+  const [offlineCollectionCount, setOfflineCollectionCount] = useState(loaded?.offlineCollectionCount ?? 0);
+  const [totalPlaytimeMs, setTotalPlaytimeMs] = useState(loaded?.totalPlaytimeMs ?? 0);
+
+  // Offline earnings pending display (null = no modal)
+  const [pendingOfflineEarnings, setPendingOfflineEarnings] = useState(null);
+
+  // ── Refs for stable interval closures ───────────────────────────────────────
   const moneyRef = useRef(money);
-  const projectsRef = useRef(projects);
-  const globalMultiplierRef = useRef(globalMultiplier);
+  const generatorsRef = useRef(generators);
+  const lagayMultiplierRef = useRef(lagayMultiplier);
+  const globalUpgradesRef = useRef(globalUpgrades);
+  const lifetimeEarnedRef = useRef(lifetimeEarned);
 
-  // Keep refs in sync
-  useEffect(() => {
-    moneyRef.current = money;
-  }, [money]);
+  useEffect(() => { moneyRef.current = money; }, [money]);
+  useEffect(() => { generatorsRef.current = generators; }, [generators]);
+  useEffect(() => { lagayMultiplierRef.current = lagayMultiplier; }, [lagayMultiplier]);
+  useEffect(() => { globalUpgradesRef.current = globalUpgrades; }, [globalUpgrades]);
+  useEffect(() => { lifetimeEarnedRef.current = lifetimeEarned; }, [lifetimeEarned]);
 
+  // ── Offline earnings on mount ────────────────────────────────────────────────
   useEffect(() => {
-    projectsRef.current = projects;
-  }, [projects]);
+    if (!loaded) return;
+    const elapsed = Date.now() - (loaded.lastSavedTimestamp ?? Date.now());
+    if (elapsed < 60000) return; // less than 60s — not worth showing
 
-  useEffect(() => {
-    globalMultiplierRef.current = globalMultiplier;
-  }, [globalMultiplier]);
-
-  // Load from localStorage on mount
-  useEffect(() => {
-    const saved = localStorage.getItem('govIdleGameState');
-    if (saved) {
-      try {
-        const state = JSON.parse(saved);
-        setMoney(state.money || 0);
-        setProjects(state.projects || INITIAL_PROJECTS);
-        setUpgrades(state.upgrades || INITIAL_UPGRADES);
-        setClickUpgrades(state.clickUpgrades || INITIAL_CLICK_UPGRADES);
-        setGlobalMultiplier(state.globalMultiplier || 1);
-        setCostScaleMultiplier(state.costScaleMultiplier || 1.15);
-        setClickMultiplier(state.clickMultiplier || 1);
-        setTotalEarned(state.totalEarned || 0);
-      } catch (e) {
-        console.error('Failed to load state from localStorage', e);
-      }
+    const cps = calculateTotalCPS(
+      loaded.generators,
+      GENERATORS,
+      loaded.lagayMultiplier ?? 1,
+      getGlobalBonus(loaded.globalUpgrades ?? INITIAL_STATE.globalUpgrades)
+    );
+    const earned = calculateOfflineEarnings(cps, elapsed);
+    if (earned > 0) {
+      setMoney(prev => prev + earned);
+      setLifetimeEarned(prev => prev + earned);
+      setPendingOfflineEarnings(earned);
+      setOfflineCollectionCount(prev => prev + 1);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Save to localStorage whenever state changes
-  useEffect(() => {
-    localStorage.setItem('govIdleGameState', JSON.stringify({
-      money,
-      projects,
-      upgrades,
-      clickUpgrades,
-      globalMultiplier,
-      costScaleMultiplier,
-      clickMultiplier,
-      totalEarned,
-    }));
-  }, [money, projects, upgrades, clickUpgrades, globalMultiplier, costScaleMultiplier, clickMultiplier]);
-
-  // Passive income loop
+  // ── Passive income loop ──────────────────────────────────────────────────────
   useEffect(() => {
     const interval = setInterval(() => {
-      const ips = calculateTotalIPS(projectsRef.current, globalMultiplierRef.current);
-      if (ips > 0) {
-        const tickAmount = ips / 10; // 100ms ticks
-        setMoney(prev => prev + tickAmount);
-        setTotalEarned(prev => prev + tickAmount);
+      const bonus = getGlobalBonus(globalUpgradesRef.current);
+      const cps = calculateTotalCPS(generatorsRef.current, GENERATORS, lagayMultiplierRef.current, bonus);
+      if (cps > 0) {
+        const tick = (cps / 1000) * TICK_MS;
+        setMoney(prev => prev + tick);
+        setLifetimeEarned(prev => prev + tick);
       }
-    }, 100);
-
+    }, TICK_MS);
     return () => clearInterval(interval);
   }, []);
 
-  const getTotalIPS = useCallback(() => {
-    return calculateTotalIPS(projects, globalMultiplier);
-  }, [projects, globalMultiplier]);
+  // ── Playtime tracking ────────────────────────────────────────────────────────
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTotalPlaytimeMs(prev => prev + 10000);
+    }, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
-  const handleClick = useCallback((amount = 1) => {
-    const gained = amount * clickMultiplier;
+  // ── Auto-save ────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const interval = setInterval(() => {
+      saveState({
+        money: moneyRef.current,
+        generators: generatorsRef.current,
+        generatorUpgrades,
+        globalUpgrades: globalUpgradesRef.current,
+        achievements,
+        prestigeCount,
+        lagayMultiplier: lagayMultiplierRef.current,
+        lifetimeEarned: lifetimeEarnedRef.current,
+        clickMultiplier,
+        totalClicks,
+        totalUpgradesPurchased,
+        totalUpgradesSpent,
+        maxSingleClick,
+        offlineCollectionCount,
+        totalPlaytimeMs,
+        lastSavedTimestamp: Date.now(),
+      });
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [
+    generatorUpgrades, globalUpgrades, achievements,
+    prestigeCount, clickMultiplier, totalClicks,
+    totalUpgradesPurchased, totalUpgradesSpent,
+    maxSingleClick, offlineCollectionCount, totalPlaytimeMs,
+  ]);
+
+  // ── Achievement checking ─────────────────────────────────────────────────────
+  useEffect(() => {
+    const state = buildAchievementState();
+    setAchievements(prev => checkAchievements(state, prev));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [money, generators, lifetimeEarned, prestigeCount, totalClicks, totalUpgradesPurchased, totalUpgradesSpent, maxSingleClick, offlineCollectionCount, totalPlaytimeMs, lagayMultiplier]);
+
+  // ── Helpers ──────────────────────────────────────────────────────────────────
+
+  function getGlobalBonus(gUpgrades) {
+    return GLOBAL_UPGRADES.reduce((sum, u) => {
+      return sum + (gUpgrades[u.id] ? u.bonusPercent : 0);
+    }, 0);
+  }
+
+  function buildAchievementState() {
+    return {
+      money,
+      lifetimeEarned,
+      generators,
+      prestigeCount,
+      totalClicks,
+      totalUpgradesPurchased,
+      totalUpgradesSpent,
+      maxSingleClick,
+      offlineCollectionCount,
+      totalPlaytimeMs,
+      lagayMultiplier,
+    };
+  }
+
+  function getCurrentCPS() {
+    return calculateTotalCPS(generators, GENERATORS, lagayMultiplier, getGlobalBonus(globalUpgrades));
+  }
+
+  function canAfford(cost) {
+    return money >= cost;
+  }
+
+  // ── Actions ──────────────────────────────────────────────────────────────────
+
+  const handleClick = useCallback(() => {
+    const gained = Math.max(1, getCurrentCPS() * 0.01) * clickMultiplier;
     setMoney(prev => prev + gained);
-    setTotalEarned(prev => prev + gained);
-  }, [clickMultiplier]);
+    setLifetimeEarned(prev => prev + gained);
+    setTotalClicks(prev => prev + 1);
+    setMaxSingleClick(prev => Math.max(prev, gained));
+    return gained;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clickMultiplier, generators, lagayMultiplier, globalUpgrades]);
 
-  const buyProject = useCallback((projectId) => {
-    const projectIndex = projects.findIndex(p => p.id === projectId);
-    if (projectIndex === -1) return false;
+  const buyGenerator = useCallback((generatorId) => {
+    const idx = generators.findIndex(g => g.id === generatorId);
+    if (idx === -1) return false;
 
-    const project = projects[projectIndex];
-    const cost = calculateProjectCost(project.baseCost, project.owned, costScaleMultiplier);
-
-    if (money < cost) return false;
+    const cost = calculateGeneratorCost(GENERATORS[idx].baseCost, generators[idx].owned);
+    if (!canAfford(cost)) return false;
 
     setMoney(prev => prev - cost);
-    setProjects(prev => {
+    setGenerators(prev => {
       const updated = [...prev];
-      updated[projectIndex] = { ...updated[projectIndex], owned: updated[projectIndex].owned + 1 };
+      updated[idx] = { ...updated[idx], owned: updated[idx].owned + 1 };
       return updated;
     });
-
     return true;
-  }, [projects, money, costScaleMultiplier]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [generators, money]);
 
-  const buyUpgrade = useCallback((upgradeId) => {
-    const upgradeIndex = upgrades.findIndex(u => u.id === upgradeId);
-    if (upgradeIndex === -1) return false;
+  const buyGeneratorUpgrade = useCallback((generatorId, upgradeIndex) => {
+    const genIdx = GENERATORS.findIndex(g => g.id === generatorId);
+    if (genIdx === -1) return false;
 
-    const upgrade = upgrades[upgradeIndex];
-    if (upgrade.purchased || money < upgrade.cost) return false;
+    const alreadyPurchased = (generatorUpgrades[generatorId] ?? []).includes(upgradeIndex);
+    if (alreadyPurchased) return false;
 
-    setMoney(prev => prev - upgrade.cost);
-    setUpgrades(prev => {
+    const cost = calculateUpgradeCost(GENERATORS[genIdx].baseCost, upgradeIndex);
+    if (!canAfford(cost)) return false;
+
+    setMoney(prev => prev - cost);
+    setGeneratorUpgrades(prev => ({
+      ...prev,
+      [generatorId]: [...(prev[generatorId] ?? []), upgradeIndex],
+    }));
+    setGenerators(prev => {
       const updated = [...prev];
-      updated[upgradeIndex] = { ...updated[upgradeIndex], purchased: true };
+      updated[genIdx] = { ...updated[genIdx], modifierLevel: updated[genIdx].modifierLevel + 1 };
       return updated;
     });
-
-    if (upgrade.type === 'multiplier') {
-      setGlobalMultiplier(prev => prev * upgrade.effect);
-    } else if (upgrade.type === 'scale') {
-      setCostScaleMultiplier(upgrade.effect);
-    }
-
+    setTotalUpgradesPurchased(prev => prev + 1);
+    setTotalUpgradesSpent(prev => prev + cost);
     return true;
-  }, [upgrades, money]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [generatorUpgrades, generators, money]);
 
-  // Unlock achievements based on current state
-  useEffect(() => {
+  const buyGlobalUpgrade = useCallback((upgradeId) => {
+    const def = GLOBAL_UPGRADES.find(u => u.id === upgradeId);
+    if (!def || globalUpgrades[upgradeId]) return false;
+    if (!canAfford(def.cost)) return false;
+
+    setMoney(prev => prev - def.cost);
+    setGlobalUpgrades(prev => ({ ...prev, [upgradeId]: true }));
+    setTotalUpgradesPurchased(prev => prev + 1);
+    setTotalUpgradesSpent(prev => prev + def.cost);
+    return true;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [globalUpgrades, money]);
+
+  const acceptImpeachment = useCallback(() => {
+    if (!canPrestige(lifetimeEarned)) return false;
+
+    const bonus = calculateLagayBonus(lifetimeEarned);
+    const newMultiplier = lagayMultiplier + bonus;
+
+    // Check prestige-specific achievements before reset
     setAchievements(prev => {
-      let changed = false;
-      const updated = prev.map(a => {
-        if (a.unlocked) return a;
-        let shouldUnlock = false;
-        if (a.moneyThreshold && money >= a.moneyThreshold) shouldUnlock = true;
-        else if (a.id === 'first_project' && projects.some(p => p.owned > 0)) shouldUnlock = true;
-        else if (a.id === 'ten_projects' && projects.reduce((sum, p) => sum + p.owned, 0) >= 10) shouldUnlock = true;
-        else if (a.id === 'first_upgrade' && upgrades.some(u => u.purchased)) shouldUnlock = true;
-        else if (a.id === 'first_click' && clickUpgrades.some(u => u.purchased)) shouldUnlock = true;
-        if (shouldUnlock) { changed = true; return { ...a, unlocked: true }; }
-        return a;
-      });
-      return changed ? updated : prev;
-    });
-  }, [money, projects, upgrades, clickUpgrades]);
-
-  const buyClickUpgrade = useCallback((upgradeId) => {
-    const upgradeIndex = clickUpgrades.findIndex(u => u.id === upgradeId);
-    if (upgradeIndex === -1) return false;
-
-    const upgrade = clickUpgrades[upgradeIndex];
-    if (upgrade.purchased || money < upgrade.cost) return false;
-
-    setMoney(prev => prev - upgrade.cost);
-    setClickUpgrades(prev => {
-      const updated = [...prev];
-      updated[upgradeIndex] = { ...updated[upgradeIndex], purchased: true };
-      return updated;
+      const next = { ...prev };
+      if (bonus >= 5) next['patient_investor'] = true;
+      if (bonus === 1) next['went_early'] = true;
+      return next;
     });
 
-    setClickMultiplier(prev => prev * upgrade.effect);
-    return true;
-  }, [clickUpgrades, money]);
+    // Reset run state
+    setMoney(0);
+    setGenerators(buildInitialGenerators());
+    setGeneratorUpgrades(buildInitialGeneratorUpgrades());
+    setGlobalUpgrades(buildInitialGlobalUpgrades());
+    setLagayMultiplier(newMultiplier);
+    setPrestigeCount(prev => prev + 1);
+
+    return { bonus, newMultiplier };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lifetimeEarned, lagayMultiplier]);
+
+  const dismissOfflineEarnings = useCallback(() => {
+    setPendingOfflineEarnings(null);
+  }, []);
+
+  // ── Derived values ───────────────────────────────────────────────────────────
+
+  const currentCPS = getCurrentCPS();
+  const globalBonus = getGlobalBonus(globalUpgrades);
+  const prestigeReady = canPrestige(lifetimeEarned);
+  const nextLagayBonus = calculateLagayBonus(lifetimeEarned);
 
   return {
+    // State
     money,
-    projects,
-    upgrades,
-    clickUpgrades,
-    clickMultiplier,
+    generators,
+    generatorUpgrades,
+    globalUpgrades,
     achievements,
-    globalMultiplier,
-    costScaleMultiplier,
-    totalEarned,
-    getTotalIPS,
+    prestigeCount,
+    lagayMultiplier,
+    lifetimeEarned,
+    clickMultiplier,
+    totalClicks,
+    // Derived
+    currentCPS,
+    globalBonus,
+    prestigeReady,
+    nextLagayBonus,
+    // UI state
+    pendingOfflineEarnings,
+    // Actions
     handleClick,
-    buyProject,
-    buyUpgrade,
-    buyClickUpgrade,
+    buyGenerator,
+    buyGeneratorUpgrade,
+    buyGlobalUpgrade,
+    acceptImpeachment,
+    dismissOfflineEarnings,
+    // Static data refs (for components to use without re-importing)
+    GENERATORS,
+    GENERATOR_UPGRADES,
+    GLOBAL_UPGRADES,
   };
 }
