@@ -339,6 +339,12 @@ export function useGameState() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lifetimeEarned, lagayMultiplier]);
 
+  const addBonusMoney = useCallback((amount) => {
+    setMoney(prev => prev + amount);
+    setLifetimeEarned(prev => prev + amount);
+    setMaxSingleClick(prev => Math.max(prev, amount));
+  }, []);
+
   const dismissOfflineEarnings = useCallback(() => {
     setPendingOfflineEarnings(null);
   }, []);
@@ -371,6 +377,7 @@ export function useGameState() {
     pendingOfflineEarnings,
     // Actions
     handleClick,
+    addBonusMoney,
     buyGenerator,
     buyGeneratorUpgrade,
     buyGlobalUpgrade,

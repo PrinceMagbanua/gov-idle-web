@@ -85,6 +85,7 @@ function App() {
         <div className="w-72 flex-shrink-0 border-r border-slate-700">
           <ClickArea
             onClickFunds={game.handleClick}
+            addBonusMoney={game.addBonusMoney}
             currentCPS={game.currentCPS}
             activityFeed={activityFeed}
           />
