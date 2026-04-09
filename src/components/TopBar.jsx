@@ -1,7 +1,10 @@
-import { formatNumber, formatIPSWithDecimals, getTitle } from '../utils/calculations';
+import { useState } from 'react';
+import { formatNumber, formatIPSWithDecimals, getTitle, getPastTitles } from '../utils/calculations';
 
 export function TopBar({ money, ips, totalEarned, onOpenAchievements }) {
+  const [showTitleHistory, setShowTitleHistory] = useState(false);
   const title = getTitle(totalEarned);
+  const pastTitles = getPastTitles(totalEarned);
 
   return (
     <div className="bg-slate-900 border-b border-slate-700 px-6 py-4 flex justify-between items-center">
@@ -17,9 +20,31 @@ export function TopBar({ money, ips, totalEarned, onOpenAchievements }) {
             {ips.toFixed(4)}/s
           </div>
         </div>
-        <div>
+        <div className="relative">
           <div className="text-sm text-slate-400">Title</div>
-          <div className="text-sm font-semibold text-purple-400 italic">{title}</div>
+          <button
+            onClick={() => setShowTitleHistory(v => !v)}
+            className="text-sm font-semibold text-purple-400 italic hover:text-purple-300 transition-colors"
+            title={pastTitles.length > 0 ? 'Click to see title history' : undefined}
+          >
+            {title} {pastTitles.length > 0 && <span className="text-purple-600 not-italic text-xs">▾</span>}
+          </button>
+
+          {showTitleHistory && pastTitles.length > 0 && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setShowTitleHistory(false)} />
+              <div className="absolute top-full left-0 mt-1 bg-slate-800 border border-slate-600 rounded shadow-lg z-20 min-w-max py-1">
+                <div className="px-3 py-1 text-xs text-slate-500 uppercase tracking-wider border-b border-slate-700 mb-1">
+                  Previous Titles
+                </div>
+                {[...pastTitles].reverse().map((t, i) => (
+                  <div key={i} className="px-3 py-1 text-sm text-slate-400 italic">
+                    {t}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </div>
       <button

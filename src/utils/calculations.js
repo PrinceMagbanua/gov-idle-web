@@ -54,3 +54,12 @@ export function getTitle(totalEarned) {
   }
   return 'Desperate Intern';
 }
+
+// Returns all titles earned so far, oldest first (excludes current)
+export function getPastTitles(totalEarned) {
+  return TITLES
+    .filter(t => totalEarned >= t.threshold)
+    .map(t => t.title)
+    .reverse()
+    .slice(0, -1); // remove last entry (current title)
+}
