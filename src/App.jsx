@@ -12,49 +12,7 @@ function App() {
   const gameState = useGameState();
   const [ips, setIps] = useState(0);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
-  const [unlockedAchievements, setUnlockedAchievements] = useState(new Set());
 
-  // Track achievements
-  useEffect(() => {
-    const newUnlocked = new Set(unlockedAchievements);
-    let changed = false;
-
-    gameState.achievements.forEach(achievement => {
-      if (!achievement.unlocked) {
-        // Check if achievement should unlock
-        let shouldUnlock = false;
-
-        if (achievement.moneyThreshold && gameState.money >= achievement.moneyThreshold) {
-          shouldUnlock = true;
-        } else if (achievement.id === 'first_project' && gameState.projects.some(p => p.owned > 0)) {
-          shouldUnlock = true;
-        } else if (achievement.id === 'ten_projects' && gameState.projects.reduce((sum, p) => sum + p.owned, 0) >= 10) {
-          shouldUnlock = true;
-        } else if (achievement.id === 'first_upgrade' && gameState.upgrades.some(u => u.purchased)) {
-          shouldUnlock = true;
-        } else if (achievement.id === 'first_click' && gameState.clickUpgrades.some(u => u.purchased)) {
-          shouldUnlock = true;
-        }
-
-        if (shouldUnlock && !newUnlocked.has(achievement.id)) {
-          newUnlocked.add(achievement.id);
-          changed = true;
-        }
-      }
-    });
-
-    if (changed) {
-      setUnlockedAchievements(newUnlocked);
-      // Update achievements in gameState (trigger toast)
-      const updatedAchievements = gameState.achievements.map(a => 
-        newUnlocked.has(a.id) ? { ...a, unlocked: true } : a
-      );
-      // Note: This won't cause infinite loop because we're just showing toasts
-      useAchievementNotifications(updatedAchievements);
-    }
-  }, [gameState.money, gameState.projects, gameState.upgrades, gameState.clickUpgrades]);
-
-  // Call achievement notification hook
   useAchievementNotifications(gameState.achievements);
 
   // Update IPS display whenever projects or multiplier changes

@@ -166,6 +166,25 @@ export function useGameState() {
     return true;
   }, [upgrades, money]);
 
+  // Unlock achievements based on current state
+  useEffect(() => {
+    setAchievements(prev => {
+      let changed = false;
+      const updated = prev.map(a => {
+        if (a.unlocked) return a;
+        let shouldUnlock = false;
+        if (a.moneyThreshold && money >= a.moneyThreshold) shouldUnlock = true;
+        else if (a.id === 'first_project' && projects.some(p => p.owned > 0)) shouldUnlock = true;
+        else if (a.id === 'ten_projects' && projects.reduce((sum, p) => sum + p.owned, 0) >= 10) shouldUnlock = true;
+        else if (a.id === 'first_upgrade' && upgrades.some(u => u.purchased)) shouldUnlock = true;
+        else if (a.id === 'first_click' && clickUpgrades.some(u => u.purchased)) shouldUnlock = true;
+        if (shouldUnlock) { changed = true; return { ...a, unlocked: true }; }
+        return a;
+      });
+      return changed ? updated : prev;
+    });
+  }, [money, projects, upgrades, clickUpgrades]);
+
   const buyClickUpgrade = useCallback((upgradeId) => {
     const upgradeIndex = clickUpgrades.findIndex(u => u.id === upgradeId);
     if (upgradeIndex === -1) return false;
