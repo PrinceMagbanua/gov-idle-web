@@ -148,7 +148,7 @@ export function useGameState() {
     if (earned > 0) {
       setMoney(prev => prev + earned);
       setLifetimeEarned(prev => prev + earned);
-      setPendingOfflineEarnings(earned);
+      setPendingOfflineEarnings({ amount: earned, elapsedMs: elapsed });
       setOfflineCollectionCount(prev => prev + 1);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps

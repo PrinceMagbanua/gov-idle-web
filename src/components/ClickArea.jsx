@@ -17,7 +17,7 @@ const PHASES = [
   { bg: 'bg-green-800',  border: 'border-green-600',  ring: '#22c55e', label: 'Closing Deal' },
 ];
 
-export function ClickArea({ onClickFunds, addBonusMoney, currentCPS, activityFeed }) {
+export function ClickArea({ onClickFunds, addBonusMoney, currentCPS, activityFeed, compact = false }) {
   const [feedbacks, setFeedbacks]   = useState([]);
   const [holdMs, setHoldMs]         = useState(0);
   const [isHolding, setIsHolding]   = useState(false);
@@ -86,7 +86,6 @@ export function ClickArea({ onClickFunds, addBonusMoney, currentCPS, activityFee
   const progress      = Math.min(holdMs / MAX_HOLD_MS, 1);
   const phase         = Math.min(Math.floor(holdMs / PHASE_DURATION), 2);
   const phaseProgress = (holdMs % PHASE_DURATION) / PHASE_DURATION;
-  // Shake speed cycles within each phase: slow (300ms) → fast (60ms)
   const shakeDuration = Math.max(60, 300 - phaseProgress * 240);
   const strokeOffset  = CIRCUMFERENCE * (1 - progress);
   const phaseConf     = PHASES[phase];
@@ -96,6 +95,89 @@ export function ClickArea({ onClickFunds, addBonusMoney, currentCPS, activityFee
     phase === 2 ? 'text-green-400' :
     phase === 1 ? 'text-amber-400' : 'text-slate-300';
 
+  // ── Compact (mobile bottom bar) layout ────────────────────────────────────
+  if (compact) {
+    return (
+      <div className="flex items-center justify-center py-3 px-4 relative overflow-visible select-none bg-slate-800/50">
+        {/* Feedback pops */}
+        {feedbacks.map(f => (
+          <div
+            key={f.id}
+            className={f.big ? 'feedback-pop-big' : 'feedback-pop'}
+            style={{
+              zIndex: 40,
+              left: f.big ? '50%' : `calc(50% + ${f.x}px)`,
+              top:  f.big ? '-48px' : `calc(50% + ${f.y * 0.4}px)`,
+            }}
+          >
+            +{formatMoney(f.amount)}
+          </div>
+        ))}
+
+        {/* Payout preview */}
+        {showHoldUI && (
+          <div
+            className="absolute left-1/2 -translate-x-1/2 text-center pointer-events-none"
+            style={{ top: -56, zIndex: 40 }}
+          >
+            <div className="bg-slate-900/90 border border-slate-700 rounded px-3 py-1.5">
+              <div className={`font-bold text-sm ${previewColor}`}>+{formatMoney(previewAmount)}</div>
+              <div className="text-slate-500 text-xs mt-0.5">{phaseConf.label}&hellip;</div>
+            </div>
+          </div>
+        )}
+
+        {/* CPS — left side */}
+        <p className="text-slate-500 text-xs mr-4 flex-shrink-0">{formatCPS(currentCPS)}</p>
+
+        {/* Button + ring */}
+        <div className="relative w-44 h-44 flex-shrink-0">
+          {showHoldUI && (
+            <svg
+              className="absolute inset-0 pointer-events-none"
+              viewBox="0 0 176 176"
+              style={{ width: 176, height: 176, transform: 'rotate(-90deg)' }}
+            >
+              <circle cx="88" cy="88" r="82" fill="none" stroke="#1e293b" strokeWidth="5" />
+              <circle
+                cx="88" cy="88" r="82"
+                fill="none"
+                stroke={phaseConf.ring}
+                strokeWidth="5"
+                strokeLinecap="round"
+                strokeDasharray={CIRCUMFERENCE}
+                strokeDashoffset={strokeOffset}
+                style={{ transition: 'stroke 0.4s ease, stroke-dashoffset 0.05s linear' }}
+              />
+            </svg>
+          )}
+          <button
+            onMouseDown={startHold}
+            onMouseUp={stopHold}
+            onMouseLeave={() => { if (isHolding) stopHold(); }}
+            onTouchStart={e => { e.preventDefault(); startHold(); }}
+            onTouchEnd={stopHold}
+            className={`w-44 h-44 rounded-full border-2 font-semibold text-white text-sm tracking-wide shadow-lg flex flex-col items-center justify-center gap-1 transition-colors duration-300 ${
+              showHoldUI
+                ? `${phaseConf.bg} ${phaseConf.border}`
+                : 'bg-slate-700 hover:bg-slate-600 active:scale-95 border-slate-600 hover:border-slate-500'
+            }`}
+            style={showHoldUI ? { animation: `shake ${shakeDuration}ms linear infinite` } : {}}
+          >
+            <span className="text-lg">₱</span>
+            <span>{showHoldUI ? phaseConf.label : 'Allocate Funds'}</span>
+            {showHoldUI && (
+              <span className="text-xs text-white/50 mt-0.5">
+                {Math.floor((1 - progress) * MAX_HOLD_MS / 1000)}s max
+              </span>
+            )}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Full (desktop sidebar) layout ─────────────────────────────────────────
   return (
     <div className="flex flex-col h-full bg-slate-800/50">
       {/* Click zone */}
@@ -107,6 +189,7 @@ export function ClickArea({ onClickFunds, addBonusMoney, currentCPS, activityFee
             key={f.id}
             className={f.big ? 'feedback-pop-big' : 'feedback-pop'}
             style={{
+              zIndex: 20,
               left: f.big ? '50%' : `calc(50% + ${f.x}px)`,
               top:  f.big ? 'calc(50% - 110px)' : `calc(50% + ${f.y}px)`,
             }}
@@ -118,8 +201,8 @@ export function ClickArea({ onClickFunds, addBonusMoney, currentCPS, activityFee
         {/* Payout preview — only while holding */}
         {showHoldUI && (
           <div
-            className="absolute text-center pointer-events-none z-10"
-            style={{ top: 'calc(50% - 118px)' }}
+            className="absolute text-center pointer-events-none"
+            style={{ top: 'calc(50% - 118px)', zIndex: 30 }}
           >
             <div className="bg-slate-900/90 border border-slate-700 rounded px-3 py-1.5">
               <div className={`font-bold text-sm ${previewColor}`}>
@@ -134,16 +217,13 @@ export function ClickArea({ onClickFunds, addBonusMoney, currentCPS, activityFee
 
         {/* Button + progress ring */}
         <div className="relative w-44 h-44">
-          {/* SVG ring — only while holding */}
           {showHoldUI && (
             <svg
               className="absolute inset-0 pointer-events-none"
               viewBox="0 0 176 176"
               style={{ width: 176, height: 176, transform: 'rotate(-90deg)' }}
             >
-              {/* Track */}
               <circle cx="88" cy="88" r="82" fill="none" stroke="#1e293b" strokeWidth="5" />
-              {/* Fill */}
               <circle
                 cx="88" cy="88" r="82"
                 fill="none"
@@ -161,7 +241,7 @@ export function ClickArea({ onClickFunds, addBonusMoney, currentCPS, activityFee
             onMouseDown={startHold}
             onMouseUp={stopHold}
             onMouseLeave={() => { if (isHolding) stopHold(); }}
-            onTouchStart={startHold}
+            onTouchStart={e => { e.preventDefault(); startHold(); }}
             onTouchEnd={stopHold}
             className={`w-44 h-44 rounded-full border-2 font-semibold text-white text-sm tracking-wide shadow-lg flex flex-col items-center justify-center gap-1 transition-colors duration-300 ${
               showHoldUI

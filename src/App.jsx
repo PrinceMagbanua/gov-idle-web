@@ -40,6 +40,81 @@ function App() {
     setShowPrestigeModal(false);
   };
 
+  const clickAreaProps = {
+    onClickFunds: game.handleClick,
+    addBonusMoney: game.addBonusMoney,
+    currentCPS: game.currentCPS,
+    activityFeed,
+  };
+
+  const rightContent = (
+    <>
+      {/* Tab bar */}
+      <div className="flex border-b border-slate-700 flex-shrink-0">
+        {['generators', 'upgrades', 'stats'].map(t => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`px-5 py-2.5 text-sm font-medium capitalize transition-colors border-b-2 -mb-px ${
+              tab === t
+                ? 'border-slate-400 text-white'
+                : 'border-transparent text-slate-500 hover:text-slate-300'
+            }`}
+          >
+            {t === 'generators' ? 'Generators' : t === 'upgrades' ? 'Upgrades' : 'Stats'}
+          </button>
+        ))}
+      </div>
+
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto">
+        {tab === 'generators' && (
+          <GeneratorList
+            generators={game.generators}
+            generatorUpgrades={game.generatorUpgrades}
+            money={game.money}
+            onBuyGenerator={handleBuyGenerator}
+            onBuyGeneratorUpgrade={game.buyGeneratorUpgrade}
+            GENERATORS={game.GENERATORS}
+          />
+        )}
+        {tab === 'upgrades' && (
+          <GlobalUpgradeList
+            globalUpgrades={game.globalUpgrades}
+            money={game.money}
+            onBuyGlobalUpgrade={game.buyGlobalUpgrade}
+          />
+        )}
+        {tab === 'stats' && (
+          <StatsPanel
+            money={game.money}
+            lifetimeEarned={game.lifetimeEarned}
+            currentCPS={game.currentCPS}
+            generators={game.generators}
+            GENERATORS={game.GENERATORS}
+            lagayMultiplier={game.lagayMultiplier}
+            prestigeCount={game.prestigeCount}
+            totalClicks={game.totalClicks}
+            totalUpgradesPurchased={game.totalUpgradesPurchased}
+            totalUpgradesSpent={game.totalUpgradesSpent}
+            maxSingleClick={game.maxSingleClick}
+            offlineCollectionCount={game.offlineCollectionCount}
+            totalPlaytimeMs={game.totalPlaytimeMs}
+          />
+        )}
+      </div>
+
+      {/* Prestige bar */}
+      <PrestigeBar
+        lifetimeEarned={game.lifetimeEarned}
+        prestigeReady={game.prestigeReady}
+        nextLagayBonus={game.nextLagayBonus}
+        lagayMultiplier={game.lagayMultiplier}
+        onOpenPrestige={() => setShowPrestigeModal(true)}
+      />
+    </>
+  );
+
   return (
     <div className="h-screen w-screen flex flex-col bg-slate-900 overflow-hidden">
       <Toaster position="top-right" theme="dark" />
@@ -47,7 +122,8 @@ function App() {
       {/* Modals */}
       {game.pendingOfflineEarnings != null && (
         <OfflineEarningsModal
-          amount={game.pendingOfflineEarnings}
+          amount={game.pendingOfflineEarnings.amount}
+          elapsedMs={game.pendingOfflineEarnings.elapsedMs}
           onDismiss={game.dismissOfflineEarnings}
         />
       )}
@@ -79,85 +155,27 @@ function App() {
         onOpenAchievements={() => setShowAchievements(true)}
       />
 
-      {/* Main layout */}
-      <div className="flex flex-1 overflow-hidden">
-
-        {/* Left panel — click area (fixed width) */}
+      {/* ── Desktop layout (md+) ── */}
+      <div className="hidden md:flex flex-1 overflow-hidden">
+        {/* Left panel — click area */}
         <div className="w-72 flex-shrink-0 border-r border-slate-700">
-          <ClickArea
-            onClickFunds={game.handleClick}
-            addBonusMoney={game.addBonusMoney}
-            currentCPS={game.currentCPS}
-            activityFeed={activityFeed}
-          />
+          <ClickArea {...clickAreaProps} />
         </div>
-
-        {/* Right panel — game content */}
+        {/* Right panel */}
         <div className="flex-1 flex flex-col overflow-hidden">
+          {rightContent}
+        </div>
+      </div>
 
-          {/* Tab bar */}
-          <div className="flex border-b border-slate-700 flex-shrink-0">
-            {['generators', 'upgrades', 'stats'].map(t => (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                className={`px-5 py-2.5 text-sm font-medium capitalize transition-colors border-b-2 -mb-px ${
-                  tab === t
-                    ? 'border-slate-400 text-white'
-                    : 'border-transparent text-slate-500 hover:text-slate-300'
-                }`}
-              >
-                {t === 'generators' ? 'Generators' : t === 'upgrades' ? 'Upgrades' : 'Stats'}
-              </button>
-            ))}
-          </div>
-
-          {/* Scrollable content */}
-          <div className="flex-1 overflow-y-auto">
-            {tab === 'generators' && (
-              <GeneratorList
-                generators={game.generators}
-                generatorUpgrades={game.generatorUpgrades}
-                money={game.money}
-                onBuyGenerator={handleBuyGenerator}
-                onBuyGeneratorUpgrade={game.buyGeneratorUpgrade}
-                GENERATORS={game.GENERATORS}
-              />
-            )}
-            {tab === 'upgrades' && (
-              <GlobalUpgradeList
-                globalUpgrades={game.globalUpgrades}
-                money={game.money}
-                onBuyGlobalUpgrade={game.buyGlobalUpgrade}
-              />
-            )}
-            {tab === 'stats' && (
-              <StatsPanel
-                money={game.money}
-                lifetimeEarned={game.lifetimeEarned}
-                currentCPS={game.currentCPS}
-                generators={game.generators}
-                GENERATORS={game.GENERATORS}
-                lagayMultiplier={game.lagayMultiplier}
-                prestigeCount={game.prestigeCount}
-                totalClicks={game.totalClicks}
-                totalUpgradesPurchased={game.totalUpgradesPurchased}
-                totalUpgradesSpent={game.totalUpgradesSpent}
-                maxSingleClick={game.maxSingleClick}
-                offlineCollectionCount={game.offlineCollectionCount}
-                totalPlaytimeMs={game.totalPlaytimeMs}
-              />
-            )}
-          </div>
-
-          {/* Prestige bar — fixed at bottom of right panel */}
-          <PrestigeBar
-            lifetimeEarned={game.lifetimeEarned}
-            prestigeReady={game.prestigeReady}
-            nextLagayBonus={game.nextLagayBonus}
-            lagayMultiplier={game.lagayMultiplier}
-            onOpenPrestige={() => setShowPrestigeModal(true)}
-          />
+      {/* ── Mobile layout (< md) ── */}
+      <div className="flex md:hidden flex-1 flex-col overflow-hidden">
+        {/* Content fills the middle */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {rightContent}
+        </div>
+        {/* Button strip pinned at bottom — comfortable thumb zone */}
+        <div className="flex-shrink-0 border-t border-slate-700 bg-slate-900">
+          <ClickArea {...clickAreaProps} compact />
         </div>
       </div>
     </div>
