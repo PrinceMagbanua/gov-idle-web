@@ -52,6 +52,7 @@ export function useGameState() {
   const [globalMultiplier, setGlobalMultiplier] = useState(1);
   const [costScaleMultiplier, setCostScaleMultiplier] = useState(1.15);
   const [clickMultiplier, setClickMultiplier] = useState(1);
+  const [totalEarned, setTotalEarned] = useState(0);
 
   // Refs to maintain current values for the interval
   const moneyRef = useRef(money);
@@ -84,6 +85,7 @@ export function useGameState() {
         setGlobalMultiplier(state.globalMultiplier || 1);
         setCostScaleMultiplier(state.costScaleMultiplier || 1.15);
         setClickMultiplier(state.clickMultiplier || 1);
+        setTotalEarned(state.totalEarned || 0);
       } catch (e) {
         console.error('Failed to load state from localStorage', e);
       }
@@ -100,6 +102,7 @@ export function useGameState() {
       globalMultiplier,
       costScaleMultiplier,
       clickMultiplier,
+      totalEarned,
     }));
   }, [money, projects, upgrades, clickUpgrades, globalMultiplier, costScaleMultiplier, clickMultiplier]);
 
@@ -110,6 +113,7 @@ export function useGameState() {
       if (ips > 0) {
         const tickAmount = ips / 10; // 100ms ticks
         setMoney(prev => prev + tickAmount);
+        setTotalEarned(prev => prev + tickAmount);
       }
     }, 100);
 
@@ -121,7 +125,9 @@ export function useGameState() {
   }, [projects, globalMultiplier]);
 
   const handleClick = useCallback((amount = 1) => {
-    setMoney(prev => prev + (amount * clickMultiplier));
+    const gained = amount * clickMultiplier;
+    setMoney(prev => prev + gained);
+    setTotalEarned(prev => prev + gained);
   }, [clickMultiplier]);
 
   const buyProject = useCallback((projectId) => {
@@ -212,6 +218,7 @@ export function useGameState() {
     achievements,
     globalMultiplier,
     costScaleMultiplier,
+    totalEarned,
     getTotalIPS,
     handleClick,
     buyProject,

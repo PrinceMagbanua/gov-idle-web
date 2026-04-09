@@ -1,6 +1,8 @@
-import { formatNumber, formatIPSWithDecimals } from '../utils/calculations';
+import { formatNumber, formatIPSWithDecimals, getTitle } from '../utils/calculations';
 
-export function TopBar({ money, ips }) {
+export function TopBar({ money, ips, totalEarned, onOpenAchievements }) {
+  const title = getTitle(totalEarned);
+
   return (
     <div className="bg-slate-900 border-b border-slate-700 px-6 py-4 flex justify-between items-center">
       <div className="flex items-center gap-8">
@@ -11,12 +13,22 @@ export function TopBar({ money, ips }) {
         <div className="group relative cursor-help">
           <div className="text-sm text-slate-400">Income/sec</div>
           <div className="text-2xl font-bold text-amber-400">{formatIPSWithDecimals(ips)}/s</div>
-          {/* Tooltip */}
           <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block bg-slate-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap border border-slate-600">
             {ips.toFixed(4)}/s
           </div>
         </div>
+        <div>
+          <div className="text-sm text-slate-400">Title</div>
+          <div className="text-sm font-semibold text-purple-400 italic">{title}</div>
+        </div>
       </div>
+      <button
+        onClick={onOpenAchievements}
+        className="text-2xl hover:scale-110 transition-transform"
+        title="Achievements"
+      >
+        🏆
+      </button>
     </div>
   );
 }

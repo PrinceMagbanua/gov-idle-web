@@ -1,18 +1,15 @@
 import { useState } from 'react';
-import { formatNumber } from '../utils/calculations';
 
-export function ClickArea({ money, onClickFunds }) {
+export function ClickArea({ onClickFunds, activityFeed }) {
   const [feedbacks, setFeedbacks] = useState([]);
 
   const handleClick = () => {
     onClickFunds();
-    
-    // Add feedback
+
     const id = Math.random();
     const feedback = { id, x: Math.random() * 100 - 50 };
     setFeedbacks(prev => [...prev, feedback]);
 
-    // Remove feedback after animation
     setTimeout(() => {
       setFeedbacks(prev => prev.filter(f => f.id !== id));
     }, 500);
@@ -30,7 +27,6 @@ export function ClickArea({ money, onClickFunds }) {
           Funds
         </button>
 
-        {/* Floating feedback popups */}
         {feedbacks.map(feedback => (
           <div
             key={feedback.id}
@@ -47,6 +43,18 @@ export function ClickArea({ money, onClickFunds }) {
       </div>
 
       <p className="text-slate-400 mt-12 text-center text-sm px-4">Click to allocate government funds</p>
+
+      {activityFeed && activityFeed.length > 0 && (
+        <div className="absolute bottom-0 left-0 right-0 px-4 pb-4 space-y-1">
+          <div className="text-xs text-slate-500 uppercase tracking-wider mb-2">Recent Activity</div>
+          {activityFeed.map(entry => (
+            <div key={entry.id} className="text-xs text-slate-400 leading-tight">
+              <span className="text-slate-500">{entry.projectName}:</span>{' '}
+              <span className="text-slate-300 italic">"{entry.funnyName}"</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

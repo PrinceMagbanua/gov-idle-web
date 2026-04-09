@@ -7,20 +7,36 @@ import { ClickArea } from './components/ClickArea';
 import { ProjectList } from './components/ProjectList';
 import { UpgradeList } from './components/UpgradeList';
 import { ClickUpgradeList } from './components/ClickUpgradeList';
+import { AchievementsModal } from './components/AchievementsModal';
+import { getFlavorName } from './data/projectFlavorNames';
 
 function App() {
   const gameState = useGameState();
   const [ips, setIps] = useState(0);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+  const [activityFeed, setActivityFeed] = useState([]);
+  const [showAchievements, setShowAchievements] = useState(false);
 
   useAchievementNotifications(gameState.achievements);
 
-  // Update IPS display whenever projects or multiplier changes
+  const handleBuyProject = (projectId) => {
+    const success = gameState.buyProject(projectId);
+    if (success) {
+      const project = gameState.projects.find(p => p.id === projectId);
+      const funnyName = getFlavorName(projectId);
+      if (funnyName) {
+        setActivityFeed(prev => [
+          { id: Date.now(), projectName: project.name, funnyName },
+          ...prev,
+        ].slice(0, 5));
+      }
+    }
+  };
+
   useEffect(() => {
     setIps(gameState.getTotalIPS());
   }, [gameState.getTotalIPS, gameState.projects, gameState.globalMultiplier]);
 
-  // Handle window resize for responsive layout
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 1024);
     window.addEventListener('resize', handleResize);
@@ -30,14 +46,26 @@ function App() {
   return (
     <div className="h-screen w-screen flex flex-col bg-slate-900">
       <Toaster position="top-right" theme="dark" />
-      <TopBar money={gameState.money} ips={ips} />
-      
+      <TopBar
+        money={gameState.money}
+        ips={ips}
+        totalEarned={gameState.totalEarned}
+        onOpenAchievements={() => setShowAchievements(true)}
+      />
+
+      {showAchievements && (
+        <AchievementsModal
+          achievements={gameState.achievements}
+          onClose={() => setShowAchievements(false)}
+        />
+      )}
+
       <div className="flex flex-1 overflow-hidden gap-0">
         {/* Left side - Click Area */}
         <div className="flex-1 min-w-0 md:min-w-96">
           <ClickArea
-            money={gameState.money}
             onClickFunds={gameState.handleClick}
+            activityFeed={activityFeed}
           />
         </div>
 
@@ -50,7 +78,7 @@ function App() {
               money={gameState.money}
               costScaleMultiplier={gameState.costScaleMultiplier}
               globalMultiplier={gameState.globalMultiplier}
-              onBuyProject={gameState.buyProject}
+              onBuyProject={handleBuyProject}
             />
           </div>
 

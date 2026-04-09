@@ -31,3 +31,26 @@ export function calculateProjectCost(baseCost, owned, costScaleMultiplier = 1.15
 export function calculateTotalIPS(projects, globalMultiplier) {
   return projects.reduce((total, project) => total + project.incomePerSecond * project.owned, 0) * globalMultiplier;
 }
+
+const TITLES = [
+  { threshold: 1_000_000_000, title: 'The System Itself' },
+  { threshold: 100_000_000,   title: "Ambassador to a Country That Doesn't Exist" },
+  { threshold: 20_000_000,    title: 'Congressman with 3 Names' },
+  { threshold: 5_000_000,     title: 'Senator Baby' },
+  { threshold: 2_000_000,     title: 'POGO-Backed Politician' },
+  { threshold: 500_000,       title: 'Artista Mayor' },
+  { threshold: 100_000,       title: 'Honest Mayor' },
+  { threshold: 50_000,        title: 'Vice Mayor with a Grudge' },
+  { threshold: 15_000,        title: 'Brgy. Captain with a Farm' },
+  { threshold: 5_000,         title: 'Kagawad with a Sideline' },
+  { threshold: 1_000,         title: 'Marites HOA President' },
+  { threshold: 100,           title: 'Corrupt HOA Auditor' },
+  { threshold: 0,             title: 'Desperate Intern' },
+];
+
+export function getTitle(totalEarned) {
+  for (const { threshold, title } of TITLES) {
+    if (totalEarned >= threshold) return title;
+  }
+  return 'Desperate Intern';
+}
