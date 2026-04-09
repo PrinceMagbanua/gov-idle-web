@@ -10,6 +10,7 @@ import { PrestigeBar } from './components/PrestigeBar';
 import { PrestigeModal } from './components/PrestigeModal';
 import { OfflineEarningsModal } from './components/OfflineEarningsModal';
 import { AchievementsModal } from './components/AchievementsModal';
+import { StatsPanel } from './components/StatsPanel';
 
 function App() {
   const game = useGameState();
@@ -96,7 +97,7 @@ function App() {
 
           {/* Tab bar */}
           <div className="flex border-b border-slate-700 flex-shrink-0">
-            {['generators', 'upgrades'].map(t => (
+            {['generators', 'upgrades', 'stats'].map(t => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
@@ -106,7 +107,7 @@ function App() {
                     : 'border-transparent text-slate-500 hover:text-slate-300'
                 }`}
               >
-                {t === 'generators' ? 'Generators' : 'Upgrades'}
+                {t === 'generators' ? 'Generators' : t === 'upgrades' ? 'Upgrades' : 'Stats'}
               </button>
             ))}
           </div>
@@ -128,6 +129,23 @@ function App() {
                 globalUpgrades={game.globalUpgrades}
                 money={game.money}
                 onBuyGlobalUpgrade={game.buyGlobalUpgrade}
+              />
+            )}
+            {tab === 'stats' && (
+              <StatsPanel
+                money={game.money}
+                lifetimeEarned={game.lifetimeEarned}
+                currentCPS={game.currentCPS}
+                generators={game.generators}
+                GENERATORS={game.GENERATORS}
+                lagayMultiplier={game.lagayMultiplier}
+                prestigeCount={game.prestigeCount}
+                totalClicks={game.totalClicks}
+                totalUpgradesPurchased={game.totalUpgradesPurchased}
+                totalUpgradesSpent={game.totalUpgradesSpent}
+                maxSingleClick={game.maxSingleClick}
+                offlineCollectionCount={game.offlineCollectionCount}
+                totalPlaytimeMs={game.totalPlaytimeMs}
               />
             )}
           </div>

@@ -368,6 +368,11 @@ export function useGameState() {
     lifetimeEarned,
     clickMultiplier,
     totalClicks,
+    totalUpgradesPurchased,
+    totalUpgradesSpent,
+    maxSingleClick,
+    offlineCollectionCount,
+    totalPlaytimeMs,
     // Derived
     currentCPS,
     globalBonus,
