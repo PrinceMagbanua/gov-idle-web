@@ -8,40 +8,39 @@ export function ClickArea({ onClickFunds, currentCPS, activityFeed }) {
     const gained = onClickFunds();
 
     const id = Math.random();
-    const x = Math.random() * 80 - 40;
-    setFeedbacks(prev => [...prev, { id, x, amount: gained }]);
-    setTimeout(() => setFeedbacks(prev => prev.filter(f => f.id !== id)), 600);
+    const x = (Math.random() - 0.5) * 80;
+    const y = (Math.random() - 0.5) * 40;
+    setFeedbacks(prev => [...prev, { id, x, y, amount: gained }]);
+    setTimeout(() => setFeedbacks(prev => prev.filter(f => f.id !== id)), 700);
   };
 
   return (
     <div className="flex flex-col h-full bg-slate-800/50">
       {/* Click zone */}
-      <div className="flex-1 flex flex-col items-center justify-center relative overflow-hidden">
-        {/* Placeholder frame for future pixel art */}
-        <div className="w-56 h-56 border border-slate-700 rounded-lg bg-slate-900/60 flex items-center justify-center mb-6 relative">
-          <div className="text-slate-700 text-xs text-center px-4 select-none">
-            [ pixel art goes here ]
+      <div className="flex-1 flex flex-col items-center justify-center relative overflow-hidden select-none">
+        {/* Feedback pops */}
+        {feedbacks.map(f => (
+          <div
+            key={f.id}
+            className="feedback-pop absolute text-sm font-bold text-green-400 pointer-events-none"
+            style={{
+              left: `calc(50% + ${f.x}px)`,
+              top: `calc(50% + ${f.y}px)`,
+            }}
+          >
+            +{formatMoney(f.amount)}
           </div>
-
-          {feedbacks.map(f => (
-            <div
-              key={f.id}
-              className="feedback-pop text-sm font-bold text-green-400 pointer-events-none"
-              style={{ left: `calc(50% + ${f.x}px)`, top: '40%' }}
-            >
-              +{formatMoney(f.amount)}
-            </div>
-          ))}
-        </div>
+        ))}
 
         <button
           onClick={handleClick}
-          className="w-40 py-3 bg-slate-700 hover:bg-slate-600 active:scale-95 border border-slate-600 hover:border-slate-500 rounded font-semibold text-white transition-all text-sm tracking-wide"
+          className="w-44 h-44 rounded-full bg-slate-700 hover:bg-slate-600 active:scale-95 border-2 border-slate-600 hover:border-slate-500 font-semibold text-white transition-all text-sm tracking-wide shadow-lg flex flex-col items-center justify-center gap-1"
         >
-          Allocate Funds
+          <span className="text-lg">₱</span>
+          <span>Allocate Funds</span>
         </button>
 
-        <p className="text-slate-600 text-xs mt-3">{formatCPS(currentCPS)}</p>
+        <p className="text-slate-500 text-xs mt-4">{formatCPS(currentCPS)}</p>
       </div>
 
       {/* Activity feed */}
@@ -51,9 +50,6 @@ export function ClickArea({ onClickFunds, currentCPS, activityFeed }) {
           {activityFeed.map(entry => (
             <div key={entry.id} className="text-xs text-slate-500 leading-tight">
               <span className="text-slate-400">{entry.name}</span>
-              {entry.funnyName && (
-                <span className="text-slate-600 italic"> &ldquo;{entry.funnyName}&rdquo;</span>
-              )}
             </div>
           ))}
         </div>
