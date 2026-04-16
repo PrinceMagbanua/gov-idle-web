@@ -55,7 +55,7 @@ function UpgradeTooltip({ upg, genDef, cost }) {
   );
 }
 
-export function GeneratorCard({ genDef, genState, purchasedUpgrades, money, rawTotalCPS, onBuy, onBuyUpgrade }) {
+export function GeneratorCard({ genDef, genState, purchasedUpgrades, money, rawTotalCPS, unlocked, onBuy, onBuyUpgrade }) {
   const [expanded, setExpanded] = useState(false);
 
   const owned = genState.owned;
@@ -66,6 +66,24 @@ export function GeneratorCard({ genDef, genState, purchasedUpgrades, money, rawT
   const upgradeDefs = GENERATOR_UPGRADES[genDef.id] ?? [];
   const hasUpgrades = owned > 0 && upgradeDefs.length > 0;
   const purchasedSet = new Set(purchasedUpgrades ?? []);
+
+  // ── Locked state ──────────────────────────────────────────────────────────
+  if (!unlocked) {
+    return (
+      <div className="border-b border-slate-700/50 px-4 py-3 flex items-center gap-3 opacity-40 select-none">
+        <div className="flex-shrink-0 w-10 h-10 rounded flex items-center justify-center text-slate-600 border border-slate-700 bg-slate-900">
+          ?
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-semibold text-slate-600">??? Not Yet Unlocked</div>
+          <div className="text-xs text-slate-700 mt-0.5">
+            Reach {formatMoney(genDef.baseCost * 0.5)} lifetime to unlock
+          </div>
+        </div>
+        <div className="w-6 h-6 text-slate-700 text-sm">🔒</div>
+      </div>
+    );
+  }
 
   return (
     <div className={`border-b border-slate-700/50 transition-colors ${owned > 0 ? 'bg-slate-800/30' : ''}`}>

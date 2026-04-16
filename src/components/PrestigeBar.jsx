@@ -1,9 +1,9 @@
 import { formatMoney } from '../utils/calculations';
 
-const THRESHOLD = 1e12; // ₱1T
+const THRESHOLD = 1e12; // ₱1T per run
 
-export function PrestigeBar({ lifetimeEarned, prestigeReady, nextLagayBonus, lagayMultiplier, onOpenPrestige }) {
-  const progress = Math.min(lifetimeEarned / THRESHOLD, 1);
+export function PrestigeBar({ earnedSincePrestige, prestigeReady, nextLagayBonus, lagayMultiplier, onOpenPrestige }) {
+  const progress = Math.min(earnedSincePrestige / THRESHOLD, 1);
   const pct = (progress * 100).toFixed(1);
 
   return (
@@ -24,7 +24,7 @@ export function PrestigeBar({ lifetimeEarned, prestigeReady, nextLagayBonus, lag
           </button>
         ) : (
           <span className="text-xs text-slate-600">
-            {formatMoney(lifetimeEarned)} / {formatMoney(THRESHOLD)}
+            {formatMoney(earnedSincePrestige)} / {formatMoney(THRESHOLD)}
           </span>
         )}
       </div>

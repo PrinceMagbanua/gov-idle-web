@@ -73,6 +73,7 @@ function App() {
             generators={game.generators}
             generatorUpgrades={game.generatorUpgrades}
             money={game.money}
+            lifetimeEarned={game.lifetimeEarned}
             onBuyGenerator={handleBuyGenerator}
             onBuyGeneratorUpgrade={game.buyGeneratorUpgrade}
             GENERATORS={game.GENERATORS}
@@ -106,7 +107,7 @@ function App() {
 
       {/* Prestige bar */}
       <PrestigeBar
-        lifetimeEarned={game.lifetimeEarned}
+        earnedSincePrestige={game.earnedSincePrestige}
         prestigeReady={game.prestigeReady}
         nextLagayBonus={game.nextLagayBonus}
         lagayMultiplier={game.lagayMultiplier}

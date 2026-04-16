@@ -86,26 +86,25 @@ export function calculateTotalCPS(generators, GENERATORS, lagayMultiplier = 1, g
 
 // ─── Prestige / Lagay Multiplier ──────────────────────────────────────────────
 
-const PRESTIGE_THRESHOLD = 1e12; // ₱1 Trillion lifetime earned
+export const PRESTIGE_THRESHOLD = 1e12; // ₱1 Trillion per run
 
-export function canPrestige(lifetimeEarned) {
-  return lifetimeEarned >= PRESTIGE_THRESHOLD;
+export function canPrestige(earnedSincePrestige) {
+  return earnedSincePrestige >= PRESTIGE_THRESHOLD;
 }
 
 /**
  * Lagay bonus earned at prestige.
- * bonus = floor(log10(lifetimeEarned)) - 11
- * Min of +1, so pressing the button at exactly ₱1T gives +1.
+ * +1× per ₱250B earned this run. At ₱1T minimum = +4×.
  */
-export function calculateLagayBonus(lifetimeEarned) {
-  if (lifetimeEarned < PRESTIGE_THRESHOLD) return 0;
-  return Math.max(1, Math.floor(Math.log10(lifetimeEarned)) - 11);
+export function calculateLagayBonus(earnedSincePrestige) {
+  if (earnedSincePrestige < PRESTIGE_THRESHOLD) return 0;
+  return Math.floor(earnedSincePrestige / 250_000_000_000);
 }
 
 // ─── Offline Earnings ─────────────────────────────────────────────────────────
 
 const OFFLINE_RATE = 0.15; // 15% of CPS while offline
-const OFFLINE_MAX_SECONDS = 86400; // cap at 24 hours
+const OFFLINE_MAX_SECONDS = 36000; // cap at 10 hours
 
 /**
  * @param {number} currentCPS       - CPS at time of last save

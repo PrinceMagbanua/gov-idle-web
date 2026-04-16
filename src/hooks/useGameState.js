@@ -42,6 +42,7 @@ const INITIAL_STATE = {
   prestigeCount: 0,
   lagayMultiplier: 1,
   lifetimeEarned: 0,
+  lastPrestigeEarned: 0,
   // Click
   clickMultiplier: 1,
   // Tracking (for achievements)
@@ -108,6 +109,7 @@ export function useGameState() {
   const [prestigeCount, setPrestigeCount] = useState(loaded?.prestigeCount ?? 0);
   const [lagayMultiplier, setLagayMultiplier] = useState(loaded?.lagayMultiplier ?? 1);
   const [lifetimeEarned, setLifetimeEarned] = useState(loaded?.lifetimeEarned ?? 0);
+  const [lastPrestigeEarned, setLastPrestigeEarned] = useState(loaded?.lastPrestigeEarned ?? 0);
   const [clickMultiplier] = useState(loaded?.clickMultiplier ?? 1);
   const [totalClicks, setTotalClicks] = useState(loaded?.totalClicks ?? 0);
   const [totalUpgradesPurchased, setTotalUpgradesPurchased] = useState(loaded?.totalUpgradesPurchased ?? 0);
@@ -188,6 +190,7 @@ export function useGameState() {
         prestigeCount,
         lagayMultiplier: lagayMultiplierRef.current,
         lifetimeEarned: lifetimeEarnedRef.current,
+        lastPrestigeEarned,
         clickMultiplier,
         totalClicks,
         totalUpgradesPurchased,
@@ -314,9 +317,10 @@ export function useGameState() {
   }, [globalUpgrades, money]);
 
   const acceptImpeachment = useCallback(() => {
-    if (!canPrestige(lifetimeEarned)) return false;
+    const earnedSincePrestige = lifetimeEarned - lastPrestigeEarned;
+    if (!canPrestige(earnedSincePrestige)) return false;
 
-    const bonus = calculateLagayBonus(lifetimeEarned);
+    const bonus = calculateLagayBonus(earnedSincePrestige);
     const newMultiplier = lagayMultiplier + bonus;
 
     // Check prestige-specific achievements before reset
@@ -327,17 +331,18 @@ export function useGameState() {
       return next;
     });
 
-    // Reset run state
+    // Reset run state, snapshot lifetime at this prestige point
     setMoney(0);
     setGenerators(buildInitialGenerators());
     setGeneratorUpgrades(buildInitialGeneratorUpgrades());
     setGlobalUpgrades(buildInitialGlobalUpgrades());
     setLagayMultiplier(newMultiplier);
     setPrestigeCount(prev => prev + 1);
+    setLastPrestigeEarned(lifetimeEarned);
 
     return { bonus, newMultiplier };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lifetimeEarned, lagayMultiplier]);
+  }, [lifetimeEarned, lastPrestigeEarned, lagayMultiplier]);
 
   const addBonusMoney = useCallback((amount) => {
     setMoney(prev => prev + amount);
@@ -353,8 +358,9 @@ export function useGameState() {
 
   const currentCPS = getCurrentCPS();
   const globalBonus = getGlobalBonus(globalUpgrades);
-  const prestigeReady = canPrestige(lifetimeEarned);
-  const nextLagayBonus = calculateLagayBonus(lifetimeEarned);
+  const earnedSincePrestige = lifetimeEarned - lastPrestigeEarned;
+  const prestigeReady = canPrestige(earnedSincePrestige);
+  const nextLagayBonus = calculateLagayBonus(earnedSincePrestige);
 
   return {
     // State
@@ -366,6 +372,8 @@ export function useGameState() {
     prestigeCount,
     lagayMultiplier,
     lifetimeEarned,
+    lastPrestigeEarned,
+    earnedSincePrestige,
     clickMultiplier,
     totalClicks,
     totalUpgradesPurchased,
