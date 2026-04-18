@@ -7,7 +7,7 @@ export function PrestigeBar({ earnedSincePrestige, prestigeReady, nextLagayBonus
   const pct = (progress * 100).toFixed(1);
 
   return (
-    <div className="border-t border-slate-700 bg-slate-900 px-4 py-3 flex-shrink-0">
+    <div className="border-t border-white/[0.05] px-4 py-3 flex-shrink-0" style={{ background: 'var(--nb)' }}>
       <div className="flex items-center justify-between mb-1.5">
         <div className="text-xs text-slate-500 uppercase tracking-wider">
           Grounds for Impeachment
@@ -28,7 +28,7 @@ export function PrestigeBar({ earnedSincePrestige, prestigeReady, nextLagayBonus
           </span>
         )}
       </div>
-      <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
         <div
           className={`h-full rounded-full transition-all duration-500 ${prestigeReady ? 'bg-rose-500' : 'bg-slate-600'}`}
           style={{ width: `${pct}%` }}

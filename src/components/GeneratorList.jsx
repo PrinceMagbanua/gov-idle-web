@@ -7,8 +7,6 @@ export function GeneratorList({ generators, generatorUpgrades, money, lifetimeEa
     return sum + calculateGeneratorCPS(genDef.baseCPS, g.owned, g.modifierLevel);
   }, 0);
 
-  // A tier unlocks when the player has ever earned at least half its base cost,
-  // or already owns any of it. Tier 0 is always unlocked.
   const isUnlocked = (i) => {
     if (i === 0) return true;
     if (generators[i].owned > 0) return true;
@@ -16,7 +14,7 @@ export function GeneratorList({ generators, generatorUpgrades, money, lifetimeEa
   };
 
   return (
-    <div>
+    <div className="p-5 grid grid-cols-3 gap-4 auto-rows-min">
       {GENERATORS.map((genDef, i) => (
         <GeneratorCard
           key={genDef.id}

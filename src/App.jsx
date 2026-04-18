@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Toaster } from 'sonner';
 import { useGameState } from './hooks/useGameState';
 import { useAchievementNotifications } from './hooks/useAchievementNotifications';
@@ -14,6 +14,37 @@ import { StatsPanel } from './components/StatsPanel';
 
 function App() {
   const game = useGameState();
+  const gradientRef = useRef(null);
+
+  useEffect(() => {
+    let mouseX = window.innerWidth / 2;
+    let mouseY = window.innerHeight / 2;
+    let cursorX = mouseX;
+    let cursorY = mouseY;
+    let rafId;
+
+    const onMouseMove = (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+    };
+
+    const animate = () => {
+      cursorX += (mouseX - cursorX) * 0.06;
+      cursorY += (mouseY - cursorY) * 0.06;
+      if (gradientRef.current) {
+        gradientRef.current.style.left = cursorX + 'px';
+        gradientRef.current.style.top = cursorY + 'px';
+      }
+      rafId = requestAnimationFrame(animate);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    rafId = requestAnimationFrame(animate);
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      cancelAnimationFrame(rafId);
+    };
+  }, []);
 
   const [tab, setTab] = useState('generators');
   const [showAchievements, setShowAchievements] = useState(false);
@@ -50,14 +81,14 @@ function App() {
   const rightContent = (
     <>
       {/* Tab bar */}
-      <div className="flex border-b border-slate-700 flex-shrink-0">
+      <div className="flex border-b border-white/[0.05] flex-shrink-0">
         {['generators', 'upgrades', 'stats'].map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`px-5 py-2.5 text-sm font-medium capitalize transition-colors border-b-2 -mb-px ${
+            className={`px-5 py-3 text-sm font-medium capitalize transition-colors border-b-2 -mb-px ${
               tab === t
-                ? 'border-slate-400 text-white'
+                ? 'border-teal-400 text-teal-300'
                 : 'border-transparent text-slate-500 hover:text-slate-300'
             }`}
           >
@@ -117,7 +148,21 @@ function App() {
   );
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-slate-900 overflow-hidden">
+    <div className="h-screen w-screen flex flex-col overflow-hidden" style={{ background: 'var(--nb)' }}>
+      {/* Mouse-trailing gradient glow */}
+      <div
+        ref={gradientRef}
+        className="fixed pointer-events-none"
+        style={{
+          width: 700,
+          height: 700,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(99,102,241,0.13) 0%, rgba(139,92,246,0.07) 45%, transparent 70%)',
+          transform: 'translate(-50%, -50%)',
+          zIndex: 0,
+        }}
+      />
+
       <Toaster position="top-right" theme="dark" />
 
       {/* Modals */}
@@ -159,7 +204,7 @@ function App() {
       {/* ── Desktop layout (md+) ── */}
       <div className="hidden md:flex flex-1 overflow-hidden">
         {/* Left panel — click area */}
-        <div className="w-72 flex-shrink-0 border-r border-slate-700">
+        <div className="w-80 flex-shrink-0 border-r border-white/[0.05]">
           <ClickArea {...clickAreaProps} />
         </div>
         {/* Right panel */}
@@ -175,7 +220,7 @@ function App() {
           {rightContent}
         </div>
         {/* Button strip pinned at bottom — comfortable thumb zone */}
-        <div className="flex-shrink-0 border-t border-slate-700 bg-slate-900">
+        <div className="flex-shrink-0 border-t border-white/[0.05]" style={{ background: 'var(--nb)' }}>
           <ClickArea {...clickAreaProps} compact />
         </div>
       </div>

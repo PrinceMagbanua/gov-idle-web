@@ -9,13 +9,13 @@ export function TopBar({ money, currentCPS, lifetimeEarned, lagayMultiplier, pre
   const unlockedCount = achievements ? Object.values(achievements).filter(Boolean).length : 0;
 
   return (
-    <div className="bg-slate-900 border-b border-slate-700 px-6 py-3 flex items-center justify-between gap-6 flex-shrink-0">
+    <div className="border-b border-white/[0.05] px-6 py-3 flex items-center justify-between gap-6 flex-shrink-0" style={{ background: 'var(--nb)' }}>
 
       {/* Left: money + CPS */}
       <div className="flex items-end gap-6">
         <div>
           <div className="text-xs text-slate-500 uppercase tracking-wider">Balance</div>
-          <div className="text-2xl font-bold text-green-400 tabular-nums">{formatMoney(money)}</div>
+          <div className="text-2xl font-bold text-teal-400 tabular-nums">{formatMoney(money)}</div>
         </div>
         <div>
           <div className="text-xs text-slate-500 uppercase tracking-wider">Per second</div>

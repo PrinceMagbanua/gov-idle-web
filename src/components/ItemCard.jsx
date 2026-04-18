@@ -1,13 +1,16 @@
 import { formatNumber, calculateProjectCost, formatIPSWithDecimals } from '../utils/calculations';
+import { useTilt } from '../hooks/useTilt';
 
 export function ItemCard({ item, isProject, isClickUpgrade = false, money, costScaleMultiplier, globalMultiplier = 1, onBuy, canAfford }) {
+  const tilt = useTilt({ maxTilt: 8, scale: 1.01 });
+
   if (isProject) {
     const cost = calculateProjectCost(item.baseCost, item.owned, costScaleMultiplier);
     const baseIncome = item.incomePerSecond * item.owned;
     const totalIncome = baseIncome * globalMultiplier;
-    
+
     return (
-      <div className="bg-slate-800 border border-slate-700 rounded px-4 py-3 flex items-start justify-between hover:border-slate-600 transition-colors gap-2">
+      <div ref={tilt.ref} onMouseMove={tilt.onMouseMove} onMouseLeave={tilt.onMouseLeave} className="bg-slate-800 border border-slate-700 rounded px-4 py-3 flex items-start justify-between hover:border-slate-600 transition-colors gap-2">
         <div className="flex-1 min-w-0">
           <div className="font-semibold text-white">{item.name}</div>
           <div className="text-xs text-slate-500 mb-1">{item.description}</div>
@@ -51,16 +54,16 @@ export function ItemCard({ item, isProject, isClickUpgrade = false, money, costS
 
   // Upgrade card (including click upgrades)
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded px-4 py-3 flex items-start justify-between hover:border-slate-600 transition-colors gap-2">
+    <div ref={tilt.ref} onMouseMove={tilt.onMouseMove} onMouseLeave={tilt.onMouseLeave} className="bg-slate-800 border border-slate-700 rounded px-4 py-3 flex items-start justify-between hover:border-slate-600 transition-colors gap-2">
       <div className="flex-1 min-w-0">
         <div className="font-semibold text-white">{item.name}</div>
         <div className="text-xs text-slate-500 mb-1">{item.description}</div>
         <div className="text-sm text-slate-400">Cost: ${formatNumber(item.cost)}</div>
         <div className="text-xs text-amber-300">
-          {isClickUpgrade 
-            ? `Click power ×${(item.effect).toFixed(1)}` 
-            : item.type === 'multiplier' 
-              ? `+${Math.round((item.effect - 1) * 100)}% global income` 
+          {isClickUpgrade
+            ? `Click power ×${(item.effect).toFixed(1)}`
+            : item.type === 'multiplier'
+              ? `+${Math.round((item.effect - 1) * 100)}% global income`
               : `Cost scaling: 1.15x → ${item.effect}x`
           }
         </div>
