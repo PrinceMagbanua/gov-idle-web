@@ -170,7 +170,6 @@ export function ClickArea({ onClickFunds, addBonusMoney, currentCPS, activityFee
           }} />
         )}
 
-        <span style={{ fontSize: 22, lineHeight: 1, opacity: 0.45, marginBottom: 8 }}>₱</span>
         <span style={{
           fontSize: 11, fontWeight: 700, letterSpacing: '0.13em',
           color: showHoldUI ? phaseConf.border : '#94a3b8',
@@ -180,11 +179,19 @@ export function ClickArea({ onClickFunds, addBonusMoney, currentCPS, activityFee
         </span>
         <span style={{
           fontSize: 9, letterSpacing: '0.12em', marginTop: 6,
-          color: 'rgba(255,255,255,0.15)',
+          color: showHoldUI ? phaseConf.border : 'rgba(255,255,255,0.15)',
+          fontVariantNumeric: 'tabular-nums',
+          fontFamily: 'ui-monospace, monospace',
+          transition: 'color 0.3s',
+          minWidth: '5ch',
+          textAlign: 'center',
         }}>
-          {showHoldUI
-            ? `${Math.floor((1 - progress) * MAX_HOLD_MS / 1000)}s remaining`
-            : 'HOLD TO CHARGE'}
+          {showHoldUI ? (() => {
+            const totalSecs = Math.ceil((1 - progress) * MAX_HOLD_MS / 1000);
+            const m = Math.floor(totalSecs / 60);
+            const s = totalSecs % 60;
+            return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+          })() : 'HOLD TO CHARGE'}
         </span>
       </div>
     </div>

@@ -14,7 +14,7 @@ export function GeneratorList({ generators, generatorUpgrades, money, lifetimeEa
   };
 
   return (
-    <div className="p-5 grid grid-cols-3 gap-4 auto-rows-min">
+    <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4 auto-rows-min">
       {GENERATORS.map((genDef, i) => (
         <GeneratorCard
           key={genDef.id}

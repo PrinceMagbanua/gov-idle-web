@@ -136,14 +136,16 @@ function App() {
         )}
       </div>
 
-      {/* Prestige bar */}
-      <PrestigeBar
-        earnedSincePrestige={game.earnedSincePrestige}
-        prestigeReady={game.prestigeReady}
-        nextLagayBonus={game.nextLagayBonus}
-        lagayMultiplier={game.lagayMultiplier}
-        onOpenPrestige={() => setShowPrestigeModal(true)}
-      />
+      {/* Prestige bar — desktop only */}
+      <div className="hidden md:block">
+        <PrestigeBar
+          earnedSincePrestige={game.earnedSincePrestige}
+          prestigeReady={game.prestigeReady}
+          nextLagayBonus={game.nextLagayBonus}
+          lagayMultiplier={game.lagayMultiplier}
+          onOpenPrestige={() => setShowPrestigeModal(true)}
+        />
+      </div>
     </>
   );
 
@@ -214,11 +216,38 @@ function App() {
       </div>
 
       {/* ── Mobile layout (< md) ── */}
-      <div className="flex md:hidden flex-1 flex-col overflow-hidden">
+      <div className="flex md:hidden flex-1 flex-col overflow-hidden relative">
         {/* Content fills the middle */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {rightContent}
         </div>
+
+        {/* Mobile prestige FAB */}
+        {(() => {
+          const THRESHOLD = 1e12;
+          const pct = Math.min((game.earnedSincePrestige / THRESHOLD) * 100, 100).toFixed(0);
+          return game.prestigeReady ? (
+            <button
+              onClick={() => setShowPrestigeModal(true)}
+              className="absolute right-3 bottom-20 z-20 px-3 py-1.5 rounded-full text-xs font-bold text-white"
+              style={{
+                background: '#be123c',
+                boxShadow: '0 0 18px rgba(190,18,60,0.55)',
+                animation: 'pulse 1.5s ease-in-out infinite',
+              }}
+            >
+              ⚖️ Impeach +{game.nextLagayBonus}×
+            </button>
+          ) : pct > 0 ? (
+            <div
+              className="absolute right-3 bottom-20 z-20 px-2.5 py-1 rounded-full text-xs text-slate-500"
+              style={{ background: 'var(--nb)', boxShadow: '-2px -2px 5px rgba(255,255,255,0.04), 2px 2px 7px rgba(0,0,0,0.7)' }}
+            >
+              ⚖️ {pct}%
+            </div>
+          ) : null;
+        })()}
+
         {/* Button strip pinned at bottom — comfortable thumb zone */}
         <div className="flex-shrink-0 border-t border-white/[0.05]" style={{ background: 'var(--nb)' }}>
           <ClickArea {...clickAreaProps} compact />
