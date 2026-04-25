@@ -1,17 +1,17 @@
 // ─── Number Formatting ────────────────────────────────────────────────────────
 
 const SUFFIXES = [
-  { value: 1e33, label: 'D' },   // Decillion
-  { value: 1e30, label: 'N' },   // Nonillion
-  { value: 1e27, label: 'O' },   // Octillion
-  { value: 1e24, label: 'Sp' },  // Septillion
-  { value: 1e21, label: 'Sx' },  // Sextillion
-  { value: 1e18, label: 'Qt' },  // Quintillion
-  { value: 1e15, label: 'Q' },   // Quadrillion
-  { value: 1e12, label: 'T' },   // Trillion
-  { value: 1e9,  label: 'B' },   // Billion
-  { value: 1e6,  label: 'M' },   // Million
-  { value: 1e3,  label: 'K' },   // Thousand
+  { value: 1e33, label: 'D' },
+  { value: 1e30, label: 'N' },
+  { value: 1e27, label: 'O' },
+  { value: 1e24, label: 'Sp' },
+  { value: 1e21, label: 'Sx' },
+  { value: 1e18, label: 'Qt' },
+  { value: 1e15, label: 'Q' },
+  { value: 1e12, label: 'T' },
+  { value: 1e9,  label: 'B' },
+  { value: 1e6,  label: 'M' },
+  { value: 1e3,  label: 'K' },
 ];
 
 export function formatNumber(num) {
@@ -39,44 +39,54 @@ export function formatCPS(num) {
 
 const PRICE_GROWTH = 1.15;
 
-/** Cost to buy the next unit of a generator tier.
- *  @param {number} baseCost - base cost from GENERATORS data
- *  @param {number} owned    - how many of this tier the player currently owns
- */
 export function calculateGeneratorCost(baseCost, owned) {
   return Math.ceil(baseCost * Math.pow(PRICE_GROWTH, owned));
 }
 
-/** Cost of the nth upgrade for a given tier (0-indexed).
- *  @param {number} baseCost      - base cost of the generator tier
- *  @param {number} upgradeIndex  - 0 = first upgrade, 7 = last
- */
 export function calculateUpgradeCost(baseCost, upgradeIndex) {
   return Math.floor(baseCost * 25 * Math.pow(PRICE_GROWTH, upgradeIndex));
 }
 
+export function calculateMultiBuyCost(baseCost, owned, qty, fatigueMultiplier = 1) {
+  let total = 0;
+  for (let i = 0; i < qty; i++) {
+    total += Math.ceil(baseCost * Math.pow(PRICE_GROWTH, owned + i) * fatigueMultiplier);
+  }
+  return total;
+}
+
+export function calculateMaxAffordable(baseCost, owned, money, fatigueMultiplier = 1) {
+  let total = 0;
+  let qty = 0;
+  while (qty < 10000) {
+    const next = Math.ceil(baseCost * Math.pow(PRICE_GROWTH, owned + qty) * fatigueMultiplier);
+    if (total + next > money) break;
+    total += next;
+    qty++;
+  }
+  return { qty, cost: total };
+}
+
+// ─── Corruption Fatigue ────────────────────────────────────────────────────────
+// Generators index 6–11 become progressively more expensive after ₱100B
+// lifetime earned when the player has never prestiged.
+
+const FATIGUE_THRESHOLD = 1e11; // ₱100 Billion
+
+export function calculateFatigueMultiplier(generatorIndex, prestigeCount, lifetimeEarned) {
+  if (generatorIndex < 6) return 1;
+  if (prestigeCount > 0) return 1;
+  if (lifetimeEarned <= FATIGUE_THRESHOLD) return 1;
+  const overage = lifetimeEarned / FATIGUE_THRESHOLD - 1;
+  return 1 + overage * 0.5;
+}
+
 // ─── CPS Calculation ──────────────────────────────────────────────────────────
 
-/**
- * CPS for a single generator tier.
- *  baseCPS × (2 ^ modifierLevel) × owned
- *
- * @param {number} baseCPS       - base CPS from GENERATORS data
- * @param {number} owned         - units owned
- * @param {number} modifierLevel - how many upgrades purchased for this tier
- */
 export function calculateGeneratorCPS(baseCPS, owned, modifierLevel) {
   return baseCPS * Math.pow(2, modifierLevel) * owned;
 }
 
-/**
- * Total CPS across all generators.
- *
- * @param {Array}  generators      - array of { id, owned, modifierLevel } matching GENERATORS order
- * @param {Array}  GENERATORS      - static generator definitions
- * @param {number} lagayMultiplier - prestige multiplier (starts at 1)
- * @param {number} globalBonus     - additive % from global upgrades (e.g. 35 = +35%)
- */
 export function calculateTotalCPS(generators, GENERATORS, lagayMultiplier = 1, globalBonus = 0) {
   const baseCPS = generators.reduce((total, g, i) => {
     return total + calculateGeneratorCPS(GENERATORS[i].baseCPS, g.owned, g.modifierLevel);
@@ -86,30 +96,23 @@ export function calculateTotalCPS(generators, GENERATORS, lagayMultiplier = 1, g
 
 // ─── Prestige / Lagay Multiplier ──────────────────────────────────────────────
 
-export const PRESTIGE_THRESHOLD = 1e12; // ₱1 Trillion per run
+export const PRESTIGE_THRESHOLD = 1e11; // ₱100 Billion per run
 
 export function canPrestige(earnedSincePrestige) {
   return earnedSincePrestige >= PRESTIGE_THRESHOLD;
 }
 
-/**
- * Lagay bonus earned at prestige.
- * +1× per ₱250B earned this run. At ₱1T minimum = +4×.
- */
+// +1× per ₱25B earned. Minimum +4× at threshold.
 export function calculateLagayBonus(earnedSincePrestige) {
   if (earnedSincePrestige < PRESTIGE_THRESHOLD) return 0;
-  return Math.floor(earnedSincePrestige / 250_000_000_000);
+  return Math.max(4, Math.floor(earnedSincePrestige / 25_000_000_000));
 }
 
 // ─── Offline Earnings ─────────────────────────────────────────────────────────
 
-const OFFLINE_RATE = 0.15; // 15% of CPS while offline
-const OFFLINE_MAX_SECONDS = 36000; // cap at 10 hours
+const OFFLINE_RATE = 0.15;
+const OFFLINE_MAX_SECONDS = 36000;
 
-/**
- * @param {number} currentCPS       - CPS at time of last save
- * @param {number} elapsedMs        - milliseconds since last save
- */
 export function calculateOfflineEarnings(currentCPS, elapsedMs) {
   const seconds = Math.min(elapsedMs / 1000, OFFLINE_MAX_SECONDS);
   return currentCPS * seconds * OFFLINE_RATE;

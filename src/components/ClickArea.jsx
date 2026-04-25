@@ -5,8 +5,8 @@ const MAX_HOLD_MS    = 90_000;
 const PHASE_DURATION = MAX_HOLD_MS / 3;
 const HOLD_THRESHOLD_MS = 400;
 
-const RAISED  = '-5px -5px 13px rgba(255,255,255,0.06), 7px 7px 18px rgba(0,0,0,0.76)';
-const PRESSED = 'inset -3px -3px 7px rgba(255,255,255,0.05), inset 4px 4px 12px rgba(0,0,0,0.76)';
+const RAISED  = '0 0 0 1px rgba(255,255,255,0.07), 0 4px 24px rgba(0,0,0,0.5)';
+const PRESSED = '0 0 0 1px rgba(20,184,166,0.2), inset 0 2px 8px rgba(0,0,0,0.5)';
 
 const PHASES = [
   { label: 'Allocating',   border: '#94a3b8', glow: 'rgba(148,163,184,0.55)' },
@@ -217,7 +217,7 @@ export function ClickArea({ onClickFunds, addBonusMoney, currentCPS, activityFee
 
         {showHoldUI && (
           <div className="absolute left-1/2 -translate-x-1/2 text-center pointer-events-none" style={{ top: -56, zIndex: 40 }}>
-            <div className="rounded-xl px-3 py-1.5 border border-white/10" style={{ background: 'var(--nb)', boxShadow: '-2px -2px 6px rgba(255,255,255,0.04), 3px 3px 8px rgba(0,0,0,0.7)' }}>
+            <div className="rounded-xl px-3 py-1.5 border border-white/10" style={{ background: 'var(--nb)' }}>
               <div className={`font-bold text-sm ${previewColor}`}>+{formatMoney(previewAmount)}</div>
               <div className="text-slate-500 text-xs mt-0.5">{phaseConf.label}&hellip;</div>
             </div>
@@ -251,7 +251,7 @@ export function ClickArea({ onClickFunds, addBonusMoney, currentCPS, activityFee
 
         {showHoldUI && (
           <div className="absolute text-center pointer-events-none" style={{ top: 'calc(50% - 118px)', zIndex: 30 }}>
-            <div className="rounded-xl px-3 py-1.5 border border-white/[0.07]" style={{ background: 'var(--nb)', boxShadow: '-2px -2px 6px rgba(255,255,255,0.04), 3px 3px 8px rgba(0,0,0,0.7)' }}>
+            <div className="rounded-xl px-3 py-1.5 border border-white/[0.07]" style={{ background: 'var(--nb)' }}>
               <div className={`font-bold text-sm ${previewColor}`}>+{formatMoney(previewAmount)}</div>
               <div className="text-slate-500 text-xs mt-0.5">{phaseConf.label}&hellip;</div>
             </div>

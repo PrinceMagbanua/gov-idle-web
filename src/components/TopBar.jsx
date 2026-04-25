@@ -15,8 +15,13 @@ export function TopBar({ money, currentCPS, lifetimeEarned, lagayMultiplier, pre
       <div className="flex md:hidden items-center justify-between px-4 py-2.5 gap-3">
         {/* Left: balance + CPS stacked */}
         <div className="flex flex-col">
-          <div className="text-xl font-bold text-teal-400 tabular-nums leading-tight">{formatMoney(money)}</div>
-          <div className="text-xs font-semibold text-amber-400 tabular-nums">{formatCPS(currentCPS)}/s</div>
+          <div
+            className="font-black text-teal-400 tabular-nums leading-tight"
+            style={{ fontSize: 'clamp(1.4rem, 6vw, 2rem)', textShadow: '0 0 18px rgba(45,212,191,0.45)' }}
+          >
+            {formatMoney(money)}
+          </div>
+          <div className="text-xs font-semibold text-amber-400 tabular-nums">{formatCPS(currentCPS)}</div>
         </div>
 
         {/* Center: title */}
@@ -57,14 +62,24 @@ export function TopBar({ money, currentCPS, lifetimeEarned, lagayMultiplier, pre
       {/* ── Desktop layout ── */}
       <div className="hidden md:flex items-center justify-between px-6 py-3 gap-6">
         {/* Left: money + CPS */}
-        <div className="flex items-end gap-6">
+        <div className="flex items-end gap-8">
           <div>
-            <div className="text-xs text-slate-500 uppercase tracking-wider">Balance</div>
-            <div className="text-2xl font-bold text-teal-400 tabular-nums">{formatMoney(money)}</div>
+            <div className="text-xs text-slate-500 uppercase tracking-wider mb-0.5">Balance</div>
+            <div
+              className="font-black text-teal-400 tabular-nums"
+              style={{ fontSize: '2.4rem', lineHeight: 1, textShadow: '0 0 24px rgba(45,212,191,0.5)' }}
+            >
+              {formatMoney(money)}
+            </div>
           </div>
-          <div>
-            <div className="text-xs text-slate-500 uppercase tracking-wider">Per second</div>
-            <div className="text-lg font-semibold text-amber-400 tabular-nums">{formatCPS(currentCPS)}</div>
+          <div className="pb-1">
+            <div className="text-xs text-slate-500 uppercase tracking-wider mb-0.5">Per second</div>
+            <div
+              className="text-xl font-bold text-amber-400 tabular-nums"
+              style={{ textShadow: '0 0 14px rgba(251,191,36,0.4)' }}
+            >
+              {formatCPS(currentCPS)}
+            </div>
           </div>
         </div>
 

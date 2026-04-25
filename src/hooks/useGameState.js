@@ -5,13 +5,16 @@ import { ACHIEVEMENTS } from '../data/achievements';
 import {
   calculateGeneratorCost,
   calculateUpgradeCost,
+  calculateMultiBuyCost,
+  calculateMaxAffordable,
+  calculateFatigueMultiplier,
   calculateTotalCPS,
   calculateLagayBonus,
   canPrestige,
   calculateOfflineEarnings,
 } from '../utils/calculations';
 
-const SAVE_VERSION = 2;
+const SAVE_VERSION = 3;
 const TICK_MS = 100;
 
 // ─── Initial State ────────────────────────────────────────────────────────────
@@ -21,7 +24,7 @@ function buildInitialGenerators() {
 }
 
 function buildInitialGeneratorUpgrades() {
-  return Object.fromEntries(GENERATORS.map(g => [g.id, []])); // [] = list of purchased upgrade indices
+  return Object.fromEntries(GENERATORS.map(g => [g.id, []]));
 }
 
 function buildInitialGlobalUpgrades() {
@@ -38,14 +41,11 @@ const INITIAL_STATE = {
   generatorUpgrades: buildInitialGeneratorUpgrades(),
   globalUpgrades: buildInitialGlobalUpgrades(),
   achievements: buildInitialAchievements(),
-  // Prestige
   prestigeCount: 0,
   lagayMultiplier: 1,
   lifetimeEarned: 0,
   lastPrestigeEarned: 0,
-  // Click
   clickMultiplier: 1,
-  // Tracking (for achievements)
   totalClicks: 0,
   totalUpgradesPurchased: 0,
   totalUpgradesSpent: 0,
@@ -64,7 +64,7 @@ function loadState() {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const saved = JSON.parse(raw);
-    if (saved.saveVersion !== SAVE_VERSION) return null; // wipe old saves
+    if (saved.saveVersion !== SAVE_VERSION) return null;
     return saved;
   } catch {
     return null;
@@ -75,7 +75,7 @@ function saveState(state) {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({ ...state, saveVersion: SAVE_VERSION }));
   } catch {
-    // Storage full or private mode — fail silently
+    // Storage full or private mode
   }
 }
 
@@ -104,7 +104,10 @@ export function useGameState() {
   const [money, setMoney] = useState(loaded?.money ?? INITIAL_STATE.money);
   const [generators, setGenerators] = useState(loaded?.generators ?? INITIAL_STATE.generators);
   const [generatorUpgrades, setGeneratorUpgrades] = useState(loaded?.generatorUpgrades ?? INITIAL_STATE.generatorUpgrades);
-  const [globalUpgrades, setGlobalUpgrades] = useState(loaded?.globalUpgrades ?? INITIAL_STATE.globalUpgrades);
+  const [globalUpgrades, setGlobalUpgrades] = useState(() => {
+    const base = buildInitialGlobalUpgrades();
+    return loaded?.globalUpgrades ? { ...base, ...loaded.globalUpgrades } : base;
+  });
   const [achievements, setAchievements] = useState(loaded?.achievements ?? INITIAL_STATE.achievements);
   const [prestigeCount, setPrestigeCount] = useState(loaded?.prestigeCount ?? 0);
   const [lagayMultiplier, setLagayMultiplier] = useState(loaded?.lagayMultiplier ?? 1);
@@ -118,7 +121,6 @@ export function useGameState() {
   const [offlineCollectionCount, setOfflineCollectionCount] = useState(loaded?.offlineCollectionCount ?? 0);
   const [totalPlaytimeMs, setTotalPlaytimeMs] = useState(loaded?.totalPlaytimeMs ?? 0);
 
-  // Offline earnings pending display (null = no modal)
   const [pendingOfflineEarnings, setPendingOfflineEarnings] = useState(null);
 
   // ── Refs for stable interval closures ───────────────────────────────────────
@@ -127,24 +129,25 @@ export function useGameState() {
   const lagayMultiplierRef = useRef(lagayMultiplier);
   const globalUpgradesRef = useRef(globalUpgrades);
   const lifetimeEarnedRef = useRef(lifetimeEarned);
-
+  const prestigeCountRef = useRef(prestigeCount);
   useEffect(() => { moneyRef.current = money; }, [money]);
   useEffect(() => { generatorsRef.current = generators; }, [generators]);
   useEffect(() => { lagayMultiplierRef.current = lagayMultiplier; }, [lagayMultiplier]);
   useEffect(() => { globalUpgradesRef.current = globalUpgrades; }, [globalUpgrades]);
   useEffect(() => { lifetimeEarnedRef.current = lifetimeEarned; }, [lifetimeEarned]);
+  useEffect(() => { prestigeCountRef.current = prestigeCount; }, [prestigeCount]);
 
   // ── Offline earnings on mount ────────────────────────────────────────────────
   useEffect(() => {
     if (!loaded) return;
     const elapsed = Date.now() - (loaded.lastSavedTimestamp ?? Date.now());
-    if (elapsed < 60000) return; // less than 60s — not worth showing
+    if (elapsed < 60000) return;
 
     const cps = calculateTotalCPS(
       loaded.generators,
       GENERATORS,
       loaded.lagayMultiplier ?? 1,
-      getGlobalBonus(loaded.globalUpgrades ?? INITIAL_STATE.globalUpgrades)
+      getGlobalBonus(loaded.globalUpgrades ?? buildInitialGlobalUpgrades())
     );
     const earned = calculateOfflineEarnings(cps, elapsed);
     if (earned > 0) {
@@ -207,6 +210,7 @@ export function useGameState() {
     prestigeCount, clickMultiplier, totalClicks,
     totalUpgradesPurchased, totalUpgradesSpent,
     maxSingleClick, offlineCollectionCount, totalPlaytimeMs,
+    lastPrestigeEarned,
   ]);
 
   // ── Achievement checking ─────────────────────────────────────────────────────
@@ -260,22 +264,37 @@ export function useGameState() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clickMultiplier, generators, lagayMultiplier, globalUpgrades]);
 
-  const buyGenerator = useCallback((generatorId) => {
+  // qty: number or 'max'
+  const buyGenerator = useCallback((generatorId, qty = 1) => {
     const idx = generators.findIndex(g => g.id === generatorId);
     if (idx === -1) return false;
 
-    const cost = calculateGeneratorCost(GENERATORS[idx].baseCost, generators[idx].owned);
-    if (!canAfford(cost)) return false;
+    const genDef = GENERATORS[idx];
+    const owned = generators[idx].owned;
+    const fatigue = calculateFatigueMultiplier(idx, prestigeCount, lifetimeEarned);
 
-    setMoney(prev => prev - cost);
+    let actualQty;
+    if (qty === 'max') {
+      const { qty: maxQty } = calculateMaxAffordable(genDef.baseCost, owned, money, fatigue);
+      actualQty = maxQty;
+    } else {
+      actualQty = Math.min(qty, 10000);
+    }
+
+    if (actualQty === 0) return false;
+
+    const totalCost = calculateMultiBuyCost(genDef.baseCost, owned, actualQty, fatigue);
+    if (money < totalCost) return false;
+
+    setMoney(prev => prev - totalCost);
     setGenerators(prev => {
       const updated = [...prev];
-      updated[idx] = { ...updated[idx], owned: updated[idx].owned + 1 };
+      updated[idx] = { ...updated[idx], owned: updated[idx].owned + actualQty };
       return updated;
     });
-    return true;
+    return actualQty;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [generators, money]);
+  }, [generators, money, prestigeCount, lifetimeEarned]);
 
   const buyGeneratorUpgrade = useCallback((generatorId, upgradeIndex) => {
     const genIdx = GENERATORS.findIndex(g => g.id === generatorId);
@@ -323,15 +342,13 @@ export function useGameState() {
     const bonus = calculateLagayBonus(earnedSincePrestige);
     const newMultiplier = lagayMultiplier + bonus;
 
-    // Check prestige-specific achievements before reset
     setAchievements(prev => {
       const next = { ...prev };
       if (bonus >= 5) next['patient_investor'] = true;
-      if (bonus === 1) next['went_early'] = true;
+      if (bonus === 4) next['went_early'] = true;
       return next;
     });
 
-    // Reset run state, snapshot lifetime at this prestige point
     setMoney(0);
     setGenerators(buildInitialGenerators());
     setGeneratorUpgrades(buildInitialGeneratorUpgrades());
@@ -363,7 +380,6 @@ export function useGameState() {
   const nextLagayBonus = calculateLagayBonus(earnedSincePrestige);
 
   return {
-    // State
     money,
     generators,
     generatorUpgrades,
@@ -381,14 +397,11 @@ export function useGameState() {
     maxSingleClick,
     offlineCollectionCount,
     totalPlaytimeMs,
-    // Derived
     currentCPS,
     globalBonus,
     prestigeReady,
     nextLagayBonus,
-    // UI state
     pendingOfflineEarnings,
-    // Actions
     handleClick,
     addBonusMoney,
     buyGenerator,
@@ -396,7 +409,6 @@ export function useGameState() {
     buyGlobalUpgrade,
     acceptImpeachment,
     dismissOfflineEarnings,
-    // Static data refs (for components to use without re-importing)
     GENERATORS,
     GENERATOR_UPGRADES,
     GLOBAL_UPGRADES,

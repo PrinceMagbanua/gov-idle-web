@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Toaster } from 'sonner';
 import { useGameState } from './hooks/useGameState';
 import { useAchievementNotifications } from './hooks/useAchievementNotifications';
+import { PRESTIGE_THRESHOLD } from './utils/calculations';
 import { TopBar } from './components/TopBar';
 import { ClickArea } from './components/ClickArea';
 import { GeneratorList } from './components/GeneratorList';
@@ -46,7 +47,8 @@ function App() {
     };
   }, []);
 
-  const [tab, setTab] = useState('generators');
+  const [tab, setTab] = useState('employees');
+  const [buyRate, setBuyRate] = useState(1);
   const [showAchievements, setShowAchievements] = useState(false);
   const [showPrestigeModal, setShowPrestigeModal] = useState(false);
   const [activityFeed, setActivityFeed] = useState([]);
@@ -54,8 +56,8 @@ function App() {
   useAchievementNotifications(game.achievements);
 
   const handleBuyGenerator = (generatorId) => {
-    const success = game.buyGenerator(generatorId);
-    if (success) {
+    const result = game.buyGenerator(generatorId, buyRate);
+    if (result) {
       const def = game.GENERATORS.find(g => g.id === generatorId);
       if (def) {
         setActivityFeed(prev => [
@@ -78,33 +80,39 @@ function App() {
     activityFeed,
   };
 
+  const TAB_LABELS = { employees: 'Employees', upgrades: 'Upgrades', stats: 'Stats' };
+
   const rightContent = (
     <>
       {/* Tab bar */}
       <div className="flex border-b border-white/[0.05] flex-shrink-0">
-        {['generators', 'upgrades', 'stats'].map(t => (
+        {Object.entries(TAB_LABELS).map(([key, label]) => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
+            key={key}
+            onClick={() => setTab(key)}
             className={`px-5 py-3 text-sm font-medium capitalize transition-colors border-b-2 -mb-px ${
-              tab === t
+              tab === key
                 ? 'border-teal-400 text-teal-300'
                 : 'border-transparent text-slate-500 hover:text-slate-300'
             }`}
           >
-            {t === 'generators' ? 'Generators' : t === 'upgrades' ? 'Upgrades' : 'Stats'}
+            {label}
           </button>
         ))}
       </div>
 
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto">
-        {tab === 'generators' && (
+        {tab === 'employees' && (
           <GeneratorList
             generators={game.generators}
             generatorUpgrades={game.generatorUpgrades}
             money={game.money}
             lifetimeEarned={game.lifetimeEarned}
+            prestigeCount={game.prestigeCount}
+            cpsMultiplier={game.lagayMultiplier * (1 + game.globalBonus / 100)}
+            buyRate={buyRate}
+            setBuyRate={setBuyRate}
             onBuyGenerator={handleBuyGenerator}
             onBuyGeneratorUpgrade={game.buyGeneratorUpgrade}
             GENERATORS={game.GENERATORS}
@@ -114,6 +122,9 @@ function App() {
           <GlobalUpgradeList
             globalUpgrades={game.globalUpgrades}
             money={game.money}
+            lifetimeEarned={game.lifetimeEarned}
+            generators={game.generators}
+            prestigeCount={game.prestigeCount}
             onBuyGlobalUpgrade={game.buyGlobalUpgrade}
           />
         )}
@@ -205,11 +216,9 @@ function App() {
 
       {/* ── Desktop layout (md+) ── */}
       <div className="hidden md:flex flex-1 overflow-hidden">
-        {/* Left panel — click area */}
         <div className="w-80 flex-shrink-0 border-r border-white/[0.05]">
           <ClickArea {...clickAreaProps} />
         </div>
-        {/* Right panel */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {rightContent}
         </div>
@@ -217,15 +226,13 @@ function App() {
 
       {/* ── Mobile layout (< md) ── */}
       <div className="flex md:hidden flex-1 flex-col overflow-hidden relative">
-        {/* Content fills the middle */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {rightContent}
         </div>
 
         {/* Mobile prestige FAB */}
         {(() => {
-          const THRESHOLD = 1e12;
-          const pct = Math.min((game.earnedSincePrestige / THRESHOLD) * 100, 100).toFixed(0);
+          const pct = Math.min((game.earnedSincePrestige / PRESTIGE_THRESHOLD) * 100, 100).toFixed(0);
           return game.prestigeReady ? (
             <button
               onClick={() => setShowPrestigeModal(true)}
@@ -241,14 +248,14 @@ function App() {
           ) : pct > 0 ? (
             <div
               className="absolute right-3 bottom-20 z-20 px-2.5 py-1 rounded-full text-xs text-slate-500"
-              style={{ background: 'var(--nb)', boxShadow: '-2px -2px 5px rgba(255,255,255,0.04), 2px 2px 7px rgba(0,0,0,0.7)' }}
+              style={{ background: 'var(--nb)', border: '1px solid rgba(255,255,255,0.06)' }}
             >
               ⚖️ {pct}%
             </div>
           ) : null;
         })()}
 
-        {/* Button strip pinned at bottom — comfortable thumb zone */}
+        {/* Button strip pinned at bottom */}
         <div className="flex-shrink-0 border-t border-white/[0.05]" style={{ background: 'var(--nb)' }}>
           <ClickArea {...clickAreaProps} compact />
         </div>
